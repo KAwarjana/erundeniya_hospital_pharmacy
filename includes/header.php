@@ -33,7 +33,7 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
             <ul class="navbar-nav d-flex align-items-center justify-content-end">
                 <!-- Mobile Toggle -->
                 <li class="nav-item d-xl-none ps-3 d-flex align-items-center mt-1 me-3">
-                    <a href="javascript:;" class="nav-link text-body p-0" id="iconNavbarSidenav">
+                    <a href="javascript:;" class="nav-link text-body p-0" id="mobileToggle">
                         <div class="sidenav-toggler-inner">
                             <i class="sidenav-toggler-line"></i>
                             <i class="sidenav-toggler-line"></i>
@@ -43,7 +43,7 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
                 </li>
 
                 <!-- Notifications (Optional) -->
-                <li class="nav-item dropdown pe-2 d-flex align-items-center">
+                <!-- <li class="nav-item dropdown pe-2 d-flex align-items-center">
                     <a href="javascript:;" class="nav-link text-body p-0" id="mobileToggle" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="material-symbols-rounded">notifications</i>
                         <span class="position-absolute top-5 start-100 translate-middle badge rounded-pill bg-danger border border-white small py-1 px-2">
@@ -104,7 +104,7 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
                             </a>
                         </li>
                     </ul>
-                </li>
+                </li> -->
 
                 <!-- User Profile Dropdown -->
                 <li class="nav-item dropdown d-flex align-items-center">
@@ -200,4 +200,39 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
         backdrop-filter: saturate(200%) blur(30px);
         background-color: rgba(255, 255, 255, 0.8) !important;
     }
+
+    /* Fix dropdown-toggle icon visibility on all screens */
+.dropdown-toggle::after {
+    display: inline-block !important;
+    margin-left: 0.255em !important;
+    vertical-align: 0.255em !important;
+    content: "" !important;
+    border-top: 0.3em solid #344767 !important;
+    border-right: 0.3em solid transparent !important;
+    border-left: 0.3em solid transparent !important;
+    border-bottom: 0 !important;
+}
+
+/* Ensure the user profile dropdown always shows the icon */
+.navbar-nav .nav-item.dropdown .dropdown-toggle::after {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Override Bootstrap's responsive hiding at 992px breakpoint */
+@media (min-width: 992px) {
+    .navbar-nav .nav-item.dropdown .dropdown-toggle::after {
+        display: inline-block !important;
+        visibility: visible !important;
+    }
+}
+
+/* Ensure the icon stays visible on smaller screens too */
+@media (max-width: 991px) {
+    .navbar-nav .nav-item.dropdown .dropdown-toggle::after {
+        display: inline-block !important;
+        visibility: visible !important;
+    }
+}
 </style>

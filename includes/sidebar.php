@@ -190,6 +190,7 @@ $current_page = basename($_SERVER['PHP_SELF']);   // e.g. pos.php
                     </a>
                 <?php endif; ?>
             </li>
+            
         </ul>
     </div>
     
