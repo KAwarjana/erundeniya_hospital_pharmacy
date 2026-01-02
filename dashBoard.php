@@ -72,9 +72,7 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
 
     <style>
-        /* FIX FOR UNWANTED TOP GAP */
-
-        /* Remove excessive top margin from main content */
+        /* Import all dashboard styles */
         .main-content {
             margin-left: 15rem;
             transition: margin-left 0.3s ease;
@@ -85,19 +83,16 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             z-index: 1;
         }
 
-        /* Remove default navbar margin */
         #navbarBlur {
             margin-top: 0 !important;
             margin-bottom: 0 !important;
         }
 
-        /* Fix container top padding */
         .container-fluid.py-2.mt-2 {
             padding-top: 0.5rem !important;
             margin-top: 0 !important;
         }
 
-        /* Remove excessive margin from dashboard title */
         .col-12 h3 {
             margin-top: 0 !important;
             margin-bottom: 0.5rem !important;
@@ -108,7 +103,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             margin-bottom: 1rem !important;
         }
 
-        /* Fix breadcrumb spacing */
         nav[aria-label="breadcrumb"] {
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
@@ -118,15 +112,11 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             margin-bottom: 0 !important;
         }
 
-        /* Remove excessive card header padding */
         .card-header {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
         }
 
-        /* CRITICAL SIDEBAR VISIBILITY FIXES */
-
-        /* Force sidebar visible on desktop */
         .sidenav {
             position: fixed;
             top: 0;
@@ -139,7 +129,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             transition: transform 0.3s ease;
         }
 
-        /* Fix navbar z-index to stay above sidebar */
         .navbar-main {
             position: relative;
             z-index: 1050 !important;
@@ -162,7 +151,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             margin-bottom: 1rem !important;
         }
 
-        /* Mobile sidebar - hidden by default */
         @media (max-width: 1199.98px) {
             .sidenav {
                 transform: translateX(-100%) !important;
@@ -181,7 +169,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             }
         }
 
-        /* Sidebar backdrop for mobile */
         .sidebar-backdrop {
             position: fixed;
             top: 0;
@@ -197,7 +184,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             display: block;
         }
 
-        /* Mobile toggle button */
         .mobile-toggle {
             display: none;
             position: fixed;
@@ -218,7 +204,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
             }
         }
 
-        /* Navbar dropdown z-index fix */
         .navbar .dropdown-menu {
             position: absolute;
             z-index: 1060 !important;
@@ -227,6 +212,229 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
 
         .navbar {
             z-index: 1050 !important;
+        }
+
+        .mobile-table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .card-header-responsive {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .material-symbols-rounded {
+            vertical-align: middle !important;
+            font-size: 20px;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .breadcrumb {
+            display: flex !important;
+            align-items: center !important;
+            margin-bottom: 0 !important;
+        }
+
+        .breadcrumb-item {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .breadcrumb-item a {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .footer {
+            margin-top: auto !important;
+            padding-top: 2rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .simple-loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #42424a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Search bar styling */
+        .search-wrapper {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group-text {
+            background-color: white;
+            border-right: 0;
+        }
+
+        .form-control {
+            border-left: 0;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #d2d6da;
+        }
+
+        /* Action buttons */
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 576px) {
+            .dashboard-header h3 {
+                font-size: 1.25rem;
+            }
+
+            .card-header-responsive {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .card-header-responsive .btn {
+                width: 100%;
+            }
+
+            .mobile-table {
+                font-size: 0.875rem;
+            }
+
+            .btn-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #dee2e6;
+            padding: 1.5rem;
+        }
+
+        .modal-header .modal-title {
+            color: #344767;
+            font-size: 1.25rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
+
+        /* Material Input Groups */
+        .input-group-outline {
+            position: relative;
+            background-color: transparent;
+            border-radius: 0.375rem;
+            border: 1px solid #d2d6da;
+            transition: border-color 0.15s ease-in-out;
+        }
+
+        .input-group-outline:focus-within {
+            border-color: #e91e63;
+        }
+
+        .input-group-outline .form-label {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.75rem;
+            padding: 0 0.25rem;
+            background-color: white;
+            color: #7b809a;
+            font-size: 0.875rem;
+            transition: all 0.2s ease-in-out;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .input-group-outline .form-control {
+            border: none;
+            background-color: transparent;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            color: #495057;
+            height: auto;
+        }
+
+        .input-group-outline .form-control:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .input-group-outline textarea.form-control {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Active/Filled state */
+        .input-group-outline.is-focused .form-label,
+        .input-group-outline.is-filled .form-label {
+            top: -0.5rem;
+            font-size: 0.75rem;
+            color: #e91e63;
+        }
+
+        /* Number input styling */
+        .input-group-outline input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .input-group-outline input[type="number"]::-webkit-outer-spin-button,
+        .input-group-outline input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         /* Card Responsive Grid */
@@ -345,316 +553,6 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
         .status-credit {
             background: #fff3e0;
             color: #f57c00;
-        }
-
-        /* Material Icons Alignment - FIXED */
-        .material-symbols-rounded {
-            vertical-align: middle !important;
-            font-size: 20px;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        /* Active Link Highlight */
-        .nav-link.active {
-            background-color: #344767 !important;
-            color: white !important;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .nav-link.active i {
-            color: white !important;
-        }
-
-        /* Hover Effects */
-        .nav-link:not(.active):not(.disabled):hover {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        /* Disabled Links */
-        .nav-link.disabled {
-            pointer-events: none;
-            opacity: 0.5;
-        }
-
-        /* Logout Hover Effect */
-        .sidenav-footer .nav-link:hover {
-            background-color: #ff001910 !important;
-            color: #dc3545 !important;
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .sidenav-footer .nav-link:hover .material-symbols-rounded,
-        .sidenav-footer .nav-link:hover .nav-link-text {
-            color: #dc3545 !important;
-            opacity: 1 !important;
-        }
-
-        .footer {
-            margin-top: auto !important;
-            padding-top: 2rem !important;
-            padding-bottom: 1rem !important;
-        }
-
-        /* Ensure dropdown stays above all cards and content */
-        .dropdown-menu {
-            z-index: 1060 !important;
-        }
-
-        /* NAVBAR FIXES - User Profile Icon Alignment */
-        .navbar .nav-item .nav-link {
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
-            padding: 0.5rem 0.75rem !important;
-        }
-
-        .navbar .nav-item .material-symbols-rounded {
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            vertical-align: middle !important;
-            font-size: 20px !important;
-            line-height: 1 !important;
-            margin: 0 !important;
-        }
-
-        /* BREADCRUMB FIXES - Dashboard Text Alignment */
-        .breadcrumb {
-            display: flex !important;
-            align-items: center !important;
-            margin-bottom: 0 !important;
-        }
-
-        .breadcrumb-item {
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        .breadcrumb-item a {
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        .breadcrumb-item .material-symbols-rounded {
-            font-size: 20px !important;
-            line-height: 1 !important;
-            vertical-align: middle !important;
-        }
-
-        /* Fix card header content alignment */
-        .card-header .d-flex {
-            align-items: center !important;
-        }
-
-        /* Fix dropdown menu icon alignment */
-        .dropdown-menu .material-symbols-rounded {
-            vertical-align: middle !important;
-            display: inline-flex !important;
-            align-items: center !important;
-        }
-
-        /* Mobile Specific Styles */
-        @media (max-width: 576px) {
-            .ms-3 {
-                margin-left: 0.5rem !important;
-            }
-
-            .h4 {
-                font-size: 1.1rem;
-            }
-
-            .mb-4 {
-                margin-bottom: 1rem !important;
-            }
-
-            .card-header {
-                padding: 1rem !important;
-            }
-
-            .card-body {
-                padding: 1rem !important;
-            }
-
-            .mobile-table {
-                font-size: 0.875rem;
-            }
-
-            .status-badge {
-                font-size: 0.75rem;
-                padding: 2px 6px;
-            }
-
-            /* Fix dropdown positioning on mobile */
-            .navbar .dropdown-menu {
-                position: absolute !important;
-                right: 0 !important;
-                left: auto !important;
-                transform: none !important;
-            }
-
-            /* Add margin for mobile toggle button */
-            .main-content {
-                padding-top: 3rem;
-            }
-
-            /* Reduce mobile toggle size */
-            .mobile-toggle {
-                top: 0.5rem;
-                left: 0.5rem;
-                padding: 0.25rem;
-            }
-
-            /* Mobile icon fixes */
-            .icon-shape {
-                width: 40px !important;
-                height: 40px !important;
-                min-width: 40px !important;
-                min-height: 40px !important;
-            }
-
-            .icon-shape .material-symbols-rounded,
-            .icon-shape i {
-                font-size: 20px !important;
-            }
-
-            .navbar .nav-item .material-symbols-rounded {
-                font-size: 20px !important;
-            }
-        }
-
-        /* Small Mobile Devices */
-        @media (max-width: 375px) {
-            .card-header h4 {
-                font-size: 1rem;
-            }
-
-            .card-header p {
-                font-size: 0.75rem;
-            }
-
-            .icon-shape {
-                width: 36px !important;
-                height: 36px !important;
-                min-width: 36px !important;
-                min-height: 36px !important;
-            }
-
-            .icon-shape i,
-            .icon-shape .material-symbols-rounded {
-                font-size: 20px !important;
-            }
-
-            .navbar .nav-item .material-symbols-rounded {
-                font-size: 20px !important;
-            }
-
-            .mobile-table {
-                font-size: 0.75rem;
-            }
-
-            .status-badge {
-                font-size: 0.7rem;
-            }
-
-            .sidenav {
-                width: 100%;
-            }
-
-            .mobile-toggle {
-                top: 0.5rem;
-                left: 0.5rem;
-            }
-        }
-
-        /* Fix for iOS Safari issues */
-        @supports (-webkit-touch-callout: none) {
-            .sidenav {
-                height: -webkit-fill-available;
-            }
-        }
-
-        /* Loading Screen */
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: white;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .simple-loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #42424a;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Notification Badge */
-        .navbar .badge {
-            font-size: 0.65rem;
-        }
-
-        /* Dropdown Menu Styling */
-        .dropdown-menu {
-            box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15), 0 8px 9px -5px rgba(20, 20, 20, 0.06);
-        }
-
-        .dropdown-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .dropdown-item.text-danger:hover {
-            background-color: #ffebee;
-        }
-
-        /* Mobile Toggle Icon */
-        .sidenav-toggler-inner {
-            width: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-
-        .sidenav-toggler-line {
-            height: 2px;
-            background-color: #344767;
-            border-radius: 2px;
-            transition: all 0.3s;
-        }
-
-        /* Breadcrumb */
-        .breadcrumb-item+.breadcrumb-item::before {
-            content: "›";
-            font-size: 1.2rem;
-        }
-
-        /* Navbar Blur Effect */
-        #navbarBlur {
-            backdrop-filter: saturate(200%) blur(30px);
-            background-color: rgba(255, 255, 255, 0.8) !important;
         }
     </style>
 </head>
