@@ -1,5 +1,6 @@
 <?php
 require_once 'auth.php';
+require_once 'includes/pagination_helper.php'; // Add this line
 Auth::requireAuth();
 
 $conn = getDBConnection();
@@ -9,24 +10,17 @@ $dateFrom = $_GET['date_from'] ?? '';
 $dateTo = $_GET['date_to'] ?? '';
 $supplierId = $_GET['supplier_id'] ?? '';
 
-// Build query with filters
-$sql = "SELECT 
-    p.*,
-    p.display_id,
-    LPAD(p.display_id, 2, '0') as formatted_display_id,
-    s.name as supplier_name,
-    u.full_name as user_name,
-    COUNT(pi.purchase_item_id) as item_count
-FROM purchases p
-LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
-LEFT JOIN users u ON p.user_id = u.user_id
-LEFT JOIN purchase_items pi ON p.purchase_id = pi.purchase_item_id";
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
+// Build count query
+$countSql = "SELECT COUNT(*) as total FROM purchases p";
 
 $whereConditions = [];
 $params = [];
 $types = "";
 
-// Add date filter only if both dates are provided
 if (!empty($dateFrom) && !empty($dateTo)) {
     $whereConditions[] = "DATE(p.purchase_date) BETWEEN ? AND ?";
     $params[] = $dateFrom;
@@ -40,24 +34,52 @@ if (!empty($supplierId)) {
     $types .= "i";
 }
 
-// Add WHERE clause if there are conditions
+if (!empty($whereConditions)) {
+    $countSql .= " WHERE " . implode(" AND ", $whereConditions);
+}
+
+$countStmt = $conn->prepare($countSql);
+if (!empty($params)) {
+    $countStmt->bind_param($types, ...$params);
+}
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with pagination
+$sql = "SELECT 
+    p.*,
+    p.display_id,
+    LPAD(p.display_id, 2, '0') as formatted_display_id,
+    s.name as supplier_name,
+    u.full_name as user_name,
+    COUNT(pi.purchase_item_id) as item_count
+FROM purchases p
+LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
+LEFT JOIN users u ON p.user_id = u.user_id
+LEFT JOIN purchase_items pi ON p.purchase_id = pi.purchase_item_id";
+
 if (!empty($whereConditions)) {
     $sql .= " WHERE " . implode(" AND ", $whereConditions);
 }
 
-$sql .= " GROUP BY p.purchase_id ORDER BY p.display_id ASC";
+$sql .= " GROUP BY p.purchase_id ORDER BY p.display_id ASC LIMIT ? OFFSET ?";
+
+// Add limit and offset to params
+$params[] = $pagination['limit'];
+$params[] = $pagination['offset'];
+$types .= "ii";
 
 $stmt = $conn->prepare($sql);
-
-// Bind parameters only if there are any
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
-
 $stmt->execute();
 $purchases = $stmt->get_result();
 
-// Get summary
+// Get summary (same as before)
 $summarySQL = "SELECT 
     COUNT(*) as total_purchases,
     SUM(total_amount) as total_amount
@@ -85,16 +107,17 @@ if (!empty($summaryWhere)) {
 }
 
 $summaryStmt = $conn->prepare($summarySQL);
-
 if (!empty($summaryParams)) {
     $summaryStmt->bind_param($summaryTypes, ...$summaryParams);
 }
-
 $summaryStmt->execute();
 $summary = $summaryStmt->get_result()->fetch_assoc();
 
 // Get suppliers for dropdown
 $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name");
+
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -102,9 +125,9 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Purchases - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -113,6 +136,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
 
     <style>
         /* Dashboard Style Enhancements */
@@ -132,7 +156,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         .supplier-search-wrapper {
             position: relative;
         }
-        
+
         .supplier-dropdown {
             position: absolute;
             top: 100%;
@@ -148,11 +172,11 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             z-index: 1000;
             display: none;
         }
-        
+
         .supplier-dropdown.show {
             display: block;
         }
-        
+
         .supplier-dropdown-item {
             padding: 12px 16px;
             cursor: pointer;
@@ -161,16 +185,16 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             display: flex;
             align-items: center;
         }
-        
+
         .supplier-dropdown-item:hover {
             background-color: #f8f9fa;
             transform: translateX(2px);
         }
-        
+
         .supplier-dropdown-item:last-child {
             border-bottom: none;
         }
-        
+
         .supplier-dropdown-item.selected {
             background-color: #e3f2fd;
             font-weight: 500;
@@ -182,7 +206,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             margin-right: 8px;
             color: #1976d2;
         }
-        
+
         .no-results {
             padding: 16px;
             text-align: center;
@@ -213,7 +237,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         .card-header h4,
         .card-header h6 {
             margin-bottom: 0;
-            color: #344767;
+            color: #000;
             font-weight: 600;
         }
 
@@ -279,13 +303,15 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         }
 
         /* Form Enhancements */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 0.5rem;
             border: 1px solid #e9ecef;
             transition: all 0.3s ease;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: #42424a;
             box-shadow: 0 0 0 0.2rem rgba(66, 66, 74, 0.25);
         }
@@ -364,8 +390,13 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Mobile Responsive */
@@ -398,7 +429,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             -webkit-text-fill-color: #000 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
-        
+
         input:-webkit-autofill {
             caret-color: #000;
         }
@@ -433,7 +464,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             color: #FB8C00 !important;
         }
 
-        
+
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -739,6 +770,269 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         .filter-card .card-body {
             padding: 1.5rem;
         }
+
+        /* ============================================
+   SEARCH BAR ICON POSITIONING FIX
+   ============================================ */
+
+        /* Fix for search icon positioning in input groups */
+        .input-group .input-group-text {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 40px !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+
+        .input-group .input-group-text .material-symbols-rounded {
+            font-size: 20px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Ensure search icon is visible */
+        .input-group-text i,
+        .input-group-text .material-symbols-rounded {
+            color: #6c757d !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* ============================================
+   FILTER FORM ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix filter form row alignment */
+        #filterForm.row.g-3 {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
+            margin-left: -0.5rem !important;
+            margin-right: -0.5rem !important;
+        }
+
+        #filterForm .col-md-3 {
+            display: flex !important;
+            flex-direction: column !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-bottom: 0 !important;
+        }
+
+        #filterForm .col-md-3 {
+            flex: 1 1 auto !important;
+        }
+
+        /* Last column with buttons */
+        #filterForm .col-md-3:last-child {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }
+
+        /* ============================================
+   FILTER/RESET BUTTONS ALIGNMENT
+   ============================================ */
+
+        /* Ensure filter buttons stay horizontal */
+        #filterForm .col-md-3.d-flex.align-items-end.gap-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+        }
+
+        #filterForm .col-md-3.d-flex.align-items-end.gap-2 .btn {
+            flex-shrink: 0 !important;
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+        }
+
+        /* Match button height with inputs */
+        #filterForm .row .btn-sm {
+            height: calc(1.5em + 1rem + 2px) !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.8125rem !important;
+            line-height: 1.5 !important;
+        }
+
+        /* ============================================
+   SUPPLIER DROPDOWN ALIGNMENT
+   ============================================ */
+
+        /* Ensure supplier dropdown stays properly positioned */
+        .supplier-search-wrapper {
+            position: relative !important;
+            width: 100% !important;
+        }
+
+        .supplier-dropdown {
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            right: 0 !important;
+            margin-top: 0.25rem !important;
+            z-index: 1000 !important;
+        }
+
+        /* ============================================
+   HEADER TITLE ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix "Purchase History X purchase records found" alignment */
+        .card-header.pb-0 .d-flex justify-content-between align-items-center>div:first-child {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.25rem !important;
+        }
+
+        .card-header.pb-0 h6 {
+            margin-bottom: 0.25rem !important;
+        }
+
+        .card-header.pb-0 p.text-sm.mb-0 {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        /* ============================================
+   RESPONSIVE FIXES
+   ============================================ */
+
+        @media (max-width: 767px) {
+
+            /* Stack elements on mobile */
+            #filterForm.row.g-3 {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            #filterForm .col-md-3 {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            #filterForm .col-md-3.d-flex.align-items-end.gap-2 {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+
+            #filterForm .col-md-3.d-flex.align-items-end.gap-2 .btn {
+                width: 100% !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+
+            /* Maintain horizontal layout on desktop */
+            #filterForm .col-md-3 {
+                flex: 0 0 25% !important;
+                max-width: 25% !important;
+            }
+
+            #filterForm .col-md-3:last-child {
+                flex: 0 0 auto !important;
+                width: auto !important;
+            }
+        }
+
+        /* ============================================
+   TABLE CELL CONTENT ALIGNMENT
+   ============================================ */
+
+        /* Center align content in table cells */
+        .table tbody td {
+            vertical-align: middle !important;
+        }
+
+        /* Ensure text doesn't wrap unnecessarily */
+        .table tbody td .text-sm {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 200px !important;
+        }
+
+        /* ============================================
+   INPUT GROUP SPECIFIC FIXES
+   ============================================ */
+
+        /* Fix input group with search icon */
+        .input-group {
+            display: flex !important;
+            align-items: stretch !important;
+            width: 100% !important;
+        }
+
+        .input-group .form-control {
+            flex: 1 1 auto !important;
+            border-left: 1px solid #e9ecef !important;
+        }
+
+        .input-group .form-control:focus {
+            border-left: 1px solid #000 !important;
+        }
+
+        /* Ensure proper border radius */
+        .input-group .input-group-text:first-child {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .input-group .form-control:not(:first-child):not(:last-child) {
+            border-radius: 0 !important;
+        }
+
+        .input-group .form-control:last-child {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
+
+        /* ============================================
+   FORM LABEL ALIGNMENT
+   ============================================ */
+
+        /* Ensure form labels are properly aligned */
+        .form-label.text-sm.fw-bold {
+            display: block !important;
+            margin-bottom: 0.5rem !important;
+            font-size: 0.875rem !important;
+            font-weight: 600 !important;
+        }
+
+        /* ============================================
+   QUICK GUIDE CARD STYLING
+   ============================================ */
+
+        /* Ensure the info card looks good */
+        .card.bg-gradient-info .card-body {
+            padding: 1.5rem !important;
+        }
+
+        .card.bg-gradient-info .d-flex.align-items-center.mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        .card.bg-gradient-info h5.card-title.text-white.mb-1 {
+            margin-bottom: 0.25rem !important;
+        }
+
+        .card.bg-gradient-info .card-text.text-white.opacity-8.mb-0 {
+            margin-bottom: 0 !important;
+        }
+
+        .card.bg-gradient-info ol.text-white.opacity-9.mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        .card.bg-gradient-info .mt-3 {
+            margin-top: 1rem !important;
+        }
     </style>
 </head>
 
@@ -834,14 +1128,14 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
                                     </small>
                                 </div>
                                 <div>
-                                    <button class="btn btn-sm btn-success mb-0" onclick="exportPurchases()">
+                                    <button class="btn btn-sm btn-dark mb-0" onclick="exportPurchases()">
                                         <i class="material-symbols-rounded me-1">download</i>
                                         Export to CSV
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-body px-0 pb-2">
+                        <div class="card-body px-3 pb-2">
                             <!-- Filters - Dashboard Style -->
                             <form method="GET" id="filterForm" class="row g-3 mx-3 mb-4">
                                 <div class="col-md-3">
@@ -863,20 +1157,19 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
                                     <div class="supplier-search-wrapper">
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="material-symbols-rounded">local_shipping</i></span>
-                                            <input 
-                                                type="text" 
-                                                class="form-control form-control-sm" 
-                                                id="supplierSearchInput" 
+                                            <input
+                                                type="text"
+                                                class="form-control form-control-sm"
+                                                id="supplierSearchInput"
                                                 placeholder="Type to search supplier..."
-                                                autocomplete="off"
-                                            >
+                                                autocomplete="off">
                                         </div>
                                         <input type="hidden" name="supplier_id" id="supplierIdInput" value="<?php echo $supplierId; ?>">
                                         <div class="supplier-dropdown" id="supplierDropdown"></div>
                                     </div>
                                 </div>
                                 <div class="col-md-3 d-flex align-items-end gap-2">
-                                    <button type="submit" class="btn btn-sm btn-primary">
+                                    <button type="submit" class="btn btn-sm btn-success">
                                         <i class="material-symbols-rounded me-1">filter_alt</i>
                                         Filter
                                     </button>
@@ -968,6 +1261,17 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if ($purchases->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $purchases->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -980,7 +1284,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
                         <div class="card-body">
                             <div class="d-flex align-items-center mb-3">
                                 <div class="icon icon-md icon-shape bg-white text-info shadow text-center border-radius-lg me-3">
-                                    <i class="material-symbols-rounded opacity-10">info</i>
+                                    <i class="material-symbols-rounded opacity-10" style="color: #1976d2;">info</i>
                                 </div>
                                 <div>
                                     <h5 class="card-title text-white mb-1">How to Record Purchases</h5>
@@ -1049,11 +1353,11 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -1154,18 +1458,19 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
                 });
             }, 1000);
         }
-    
+
         // Supplier data from PHP
-        const suppliers = [
-            { id: '', name: 'All Suppliers' },
-            <?php 
-            $suppliers->data_seek(0);
-            while ($supplier = $suppliers->fetch_assoc()): 
-            ?>
-            ,{ 
-                id: <?php echo $supplier['supplier_id']; ?>, 
-                name: '<?php echo addslashes($supplier['name']); ?>' 
+        const suppliers = [{
+                id: '',
+                name: 'All Suppliers'
             },
+            <?php
+            $suppliers->data_seek(0);
+            while ($supplier = $suppliers->fetch_assoc()):
+            ?>, {
+                    id: <?php echo $supplier['supplier_id']; ?>,
+                    name: '<?php echo addslashes($supplier['name']); ?>'
+                },
             <?php endwhile; ?>
         ];
 
@@ -1186,7 +1491,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
 
         // Filter and display suppliers
         function filterSuppliers(searchTerm) {
-            const filtered = suppliers.filter(supplier => 
+            const filtered = suppliers.filter(supplier =>
                 supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
             );
 
@@ -1227,7 +1532,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
             if (item) {
                 const supplierId = item.dataset.id;
                 const supplierName = item.dataset.name;
-                
+
                 searchInput.value = supplierName;
                 hiddenInput.value = supplierId;
                 dropdown.classList.remove('show');
@@ -1249,7 +1554,7 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         });
 
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================
@@ -1408,4 +1713,5 @@ $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name
         }
     </script>
 </body>
+
 </html>

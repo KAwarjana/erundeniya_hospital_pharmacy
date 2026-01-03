@@ -19,8 +19,12 @@ if ($supplierId > 0) {
     $stmt->bind_param("ssssi", $name, $contactNo, $email, $address, $supplierId);
     $message = 'Supplier updated successfully';
 } else {
-    $stmt = $conn->prepare("INSERT INTO suppliers (name, contact_no, email, address) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $name, $contactNo, $email, $address);
+    // Get next display_id for new supplier
+    $result = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_display_id FROM suppliers");
+    $nextDisplayId = $result->fetch_assoc()['next_display_id'];
+    
+    $stmt = $conn->prepare("INSERT INTO suppliers (name, contact_no, email, address, display_id) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssi", $name, $contactNo, $email, $address, $nextDisplayId);
     $message = 'Supplier added successfully';
 }
 

@@ -1,5 +1,6 @@
 <?php
 require_once 'auth.php';
+require_once 'includes/pagination_helper.php'; // Add this line
 Auth::requireAuth();
 
 $conn = getDBConnection();
@@ -7,14 +8,46 @@ $conn = getDBConnection();
 // Get search parameter
 $searchTerm = $_GET['search'] ?? '';
 
-// Build query with search
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
+// Build count query
+$countSql = "SELECT COUNT(*) as total FROM suppliers s";
+
+if (!empty($searchTerm)) {
+    if (is_numeric($searchTerm)) {
+        $countSql .= " WHERE s.display_id = ? OR s.name LIKE ? OR s.contact_no LIKE ? OR s.email LIKE ?";
+    } else {
+        $countSql .= " WHERE s.name LIKE ? OR s.contact_no LIKE ? OR s.email LIKE ?";
+    }
+}
+
+$countStmt = $conn->prepare($countSql);
+
+if (!empty($searchTerm)) {
+    if (is_numeric($searchTerm)) {
+        $searchParam = "%$searchTerm%";
+        $countStmt->bind_param("isss", $searchTerm, $searchParam, $searchParam, $searchParam);
+    } else {
+        $searchParam = "%$searchTerm%";
+        $countStmt->bind_param("sss", $searchParam, $searchParam, $searchParam);
+    }
+}
+
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with pagination
 $sql = "SELECT s.*, LPAD(s.display_id, 2, '0') as formatted_display_id, COUNT(p.purchase_id) as total_purchases,
     COALESCE(SUM(p.total_amount), 0) as total_purchased
 FROM suppliers s
 LEFT JOIN purchases p ON s.supplier_id = p.supplier_id";
 
 if (!empty($searchTerm)) {
-    // Check if search term is a number (display_id)
     if (is_numeric($searchTerm)) {
         $sql .= " WHERE s.display_id = ? OR s.name LIKE ? OR s.contact_no LIKE ? OR s.email LIKE ?";
     } else {
@@ -22,29 +55,27 @@ if (!empty($searchTerm)) {
     }
 }
 
-$sql .= " GROUP BY s.supplier_id ORDER BY s.display_id ASC";
+$sql .= " GROUP BY s.supplier_id ORDER BY s.display_id ASC LIMIT ? OFFSET ?";
 
 $stmt = $conn->prepare($sql);
 
 if (!empty($searchTerm)) {
     if (is_numeric($searchTerm)) {
         $searchParam = "%$searchTerm%";
-        $stmt->bind_param("isss", $searchTerm, $searchParam, $searchParam, $searchParam);
+        $stmt->bind_param("isssii", $searchTerm, $searchParam, $searchParam, $searchParam, $pagination['limit'], $pagination['offset']);
     } else {
         $searchParam = "%$searchTerm%";
-        $stmt->bind_param("sss", $searchParam, $searchParam, $searchParam);
+        $stmt->bind_param("sssii", $searchParam, $searchParam, $searchParam, $pagination['limit'], $pagination['offset']);
     }
+} else {
+    $stmt->bind_param("ii", $pagination['limit'], $pagination['offset']);
 }
 
 $stmt->execute();
 $suppliers = $stmt->get_result();
 
-// Get supplier statistics
-$totalSuppliers = $conn->query("SELECT COUNT(*) as total FROM suppliers")->fetch_assoc()['total'];
-$activeSuppliers = $conn->query("SELECT COUNT(DISTINCT s.supplier_id) as total FROM suppliers s JOIN purchases p ON s.supplier_id = p.supplier_id")->fetch_assoc()['total'];
-$totalPurchases = $conn->query("SELECT COUNT(*) as total FROM purchases")->fetch_assoc()['total'];
-$totalPurchaseValue = $conn->query("SELECT SUM(total_amount) as total FROM purchases")->fetch_assoc()['total'];
-$averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purchases")->fetch_assoc()['avg'];
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
 ?>
 <!doctype html>
 <html lang="en" dir="ltr" data-bs-theme="light">
@@ -52,10 +83,10 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Suppliers - E. W. D. Erundeniya</title>
+    <title>Erundeniya Hospital Pharmacy</title>
 
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
-    
+    <link rel="shortcut icon" href="assets/images/logof1.png">
+
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
@@ -63,9 +94,222 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.css">
 
     <style>
+        /* Fix for search icon positioning in input groups */
+        .input-group .input-group-text {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 40px !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+
+        .input-group .input-group-text .material-symbols-rounded {
+            font-size: 20px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Ensure search icon is visible */
+        .input-group-text i,
+        .input-group-text .material-symbols-rounded {
+            color: #6c757d !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* ============================================
+   SEARCH FORM ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix search form row alignment */
+        .search-form .row.g-3,
+        form[method="GET"] .row.g-3 {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
+            margin-left: -0.5rem !important;
+            margin-right: -0.5rem !important;
+        }
+
+        .search-form .col-md-10,
+        .search-form .col-md-2,
+        form[method="GET"] .col-md-10,
+        form[method="GET"] .col-md-2 {
+            display: flex !important;
+            flex-direction: column !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-bottom: 0 !important;
+        }
+
+        .search-form .col-md-10,
+        form[method="GET"] .col-md-10 {
+            flex: 1 1 auto !important;
+        }
+
+        .search-form .col-md-2,
+        form[method="GET"] .col-md-2 {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }
+
+        /* ============================================
+   ACTION BUTTONS ALIGNMENT FIX
+   ============================================ */
+
+        /* Keep action buttons in same row */
+        .table td.align-middle.text-center {
+            white-space: nowrap !important;
+            padding: 1rem 0.5rem !important;
+        }
+
+        .table .btn-group {
+            display: inline-flex !important;
+            gap: 0.25rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .table .btn-icon {
+            flex-shrink: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* ============================================
+   FILTER/SEARCH BUTTONS ALIGNMENT
+   ============================================ */
+
+        /* Ensure filter buttons stay horizontal */
+        .col-md-2.d-flex.gap-2,
+        .col-md-3.d-flex.gap-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+        }
+
+        .col-md-2.d-flex.gap-2 .btn,
+        .col-md-3.d-flex.gap-2 .btn {
+            flex-shrink: 0 !important;
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+        }
+
+        /* Match button height with inputs */
+        form .row .btn-sm {
+            height: calc(1.5em + 1rem + 2px) !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.8125rem !important;
+            line-height: 1.5 !important;
+        }
+
+        /* ============================================
+   RESPONSIVE FIXES
+   ============================================ */
+
+        @media (max-width: 767px) {
+
+            /* Stack elements on mobile */
+            .search-form .row.g-3,
+            form[method="GET"] .row.g-3 {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .search-form .col-md-10,
+            .search-form .col-md-2,
+            form[method="GET"] .col-md-10,
+            form[method="GET"] .col-md-2 {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .col-md-2.d-flex.gap-2,
+            .col-md-3.d-flex.gap-2 {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+
+            .col-md-2.d-flex.gap-2 .btn,
+            .col-md-3.d-flex.gap-2 .btn {
+                width: 100% !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+
+            /* Maintain horizontal layout on desktop */
+            .search-form .col-md-10,
+            form[method="GET"] .col-md-10 {
+                flex: 0 0 83.333333% !important;
+                max-width: 83.333333% !important;
+            }
+
+            .search-form .col-md-2,
+            form[method="GET"] .col-md-2 {
+                flex: 0 0 16.666667% !important;
+                max-width: 16.666667% !important;
+            }
+        }
+
+        /* ============================================
+   SPECIFIC FIXES FOR PRODUCTS.PHP
+   ============================================ */
+
+        /* Filter card specific fixes */
+        .filter-card .col-md-3.d-flex.align-items-end.gap-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        /* Ensure filter buttons stay side by side */
+        .filter-card .d-flex.gap-2 {
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }
+
+        /* ============================================
+   TABLE CELL CONTENT ALIGNMENT
+   ============================================ */
+
+        /* Center align content in table cells */
+        .table tbody td {
+            vertical-align: middle !important;
+        }
+
+        /* Ensure text doesn't wrap unnecessarily */
+        .table tbody td .text-sm {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 200px !important;
+        }
+
+        /* Status badges alignment */
+        .table .badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+        }
+
         /* Dashboard matching styles */
         .stats-grid {
             display: grid;
@@ -98,22 +342,24 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
             padding: 1.5rem;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border: 1px solid #e9ecef;
             border-radius: 0.5rem;
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: #344767;
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #000;
             box-shadow: 0 0 0 0.2rem rgba(52, 71, 103, 0.15);
         }
 
         .form-label {
             font-size: 0.875rem;
             font-weight: 500;
-            color: #344767;
+            color: #000;
             margin-bottom: 0.5rem;
         }
 
@@ -129,8 +375,8 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
         }
 
         .btn-primary {
-            background-color: #344767;
-            border-color: #344767;
+            background-color: #000;
+            border-color: #000;
         }
 
         .btn-primary:hover {
@@ -330,6 +576,7 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
             0% {
                 transform: rotate(0deg);
             }
+
             100% {
                 transform: rotate(360deg);
             }
@@ -363,7 +610,7 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
 
         .modal-title {
             font-weight: 600;
-            color: #344767;
+            color: #000;
         }
 
         .modal-body {
@@ -392,11 +639,10 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
         }
 
         .input-group .form-control:focus {
-            border-color: #344767;
+            border-color: #000;
             box-shadow: 0 0 0 0.2rem rgba(52, 71, 103, 0.15);
         }
 
-        
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -737,50 +983,52 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
                     <div class="card">
                         <div class="card-header pb-0 card-header-responsive">
                             <div>
-                                <h6>Customer List</h6>
-                                <p class="text-sm mb-0">
-                                    <i class="fa fa-users text-info" aria-hidden="true"></i>
-                                    <span class="font-weight-bold ms-1"><?php echo $customers->num_rows; ?></span> total customers
+                                <h6>Suppliers List</h6>
+                                <p class="text-sm mb-1">
+                                    <i class="fa fa-check text-info" aria-hidden="true"></i>
+                                    (<span class="font-weight-bold ms-1"><?php echo $suppliers->num_rows; ?></span> suppliers found&nbsp;)
                                 </p>
                             </div>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-success" onclick="exportCustomers()">
-                                    <i class="material-symbols-rounded text-sm">download</i>
-                                    Export CSV
+                            <div>
+                                <button type="button" class="btn btn-sm btn-success mb-0" onclick="exportSuppliers()">
+                                    <i class="material-symbols-rounded me-1" style="font-size: 16px;">download</i>
+                                    Export to CSV
                                 </button>
-                                <button class="btn btn-sm btn-primary" onclick="showAddCustomerModal()">
-                                    <i class="material-symbols-rounded text-sm">add</i>
-                                    Add Customer
+                                <button type="button" class="btn btn-sm btn-primary mb-0" onclick="showAddSupplierModal()">
+                                    <i class="material-symbols-rounded me-1" style="font-size: 16px;">add_circle</i>
+                                    Add New Supplier
                                 </button>
                             </div>
                         </div>
-
                         <div class="card-body px-0 pb-2">
-                            <!-- Search Bar -->
-                            <div class="px-4 search-wrapper">
-                                <form method="GET" class="row g-3">
-                                    <div class="col-md-10">
-                                        <div class="input-group input-group-outline">
-                                            <span class="input-group-text">
-                                                <i class="material-symbols-rounded">search</i>
-                                            </span>
-                                            <input 
-                                                type="text" 
-                                                class="form-control" 
-                                                name="search" 
-                                                placeholder="Search by ID, name or contact number..."
-                                                value="<?php echo htmlspecialchars($searchTerm); ?>"
-                                            >
-                                        </div>
+                            <!-- Search - Dashboard Style -->
+                            <form method="GET" class="row g-3 mb-4 px-3">
+                                <div class="col-md-10">
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="material-symbols-rounded" style="font-size: 20px;">search</i>
+                                        </span>
+                                        <input
+                                            type="text"
+                                            class="form-control form-control-sm"
+                                            name="search"
+                                            placeholder="Search by display ID, name, contact number, or email..."
+                                            value="<?php echo htmlspecialchars($searchTerm); ?>">
                                     </div>
-                                    <div class="col-md-2 d-flex gap-2">
-                                        <button type="submit" class="btn btn-primary mb-0 flex-fill">Search</button>
-                                        <?php if (!empty($searchTerm)): ?>
-                                            <a href="customers.php" class="btn btn-outline-secondary mb-0 flex-fill">Clear</a>
-                                        <?php endif; ?>
-                                    </div>
-                                </form>
-                            </div>
+                                </div>
+                                <div class="col-md-2 d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                                        <i class="material-symbols-rounded me-1" style="font-size: 16px;">search</i>
+                                        Search
+                                    </button>
+                                    <?php if (!empty($searchTerm)): ?>
+                                        <a href="suppliers.php" class="btn btn-secondary btn-sm flex-fill">
+                                            <i class="material-symbols-rounded me-1" style="font-size: 16px;">refresh</i>
+                                            Clear
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </form>
 
                             <div class="table-responsive mobile-table px-3">
                                 <table class="table align-items-center mb-0">
@@ -853,6 +1101,17 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if ($suppliers->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $suppliers->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -879,7 +1138,7 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
                         </div>
                         <div class="mb-3">
                             <label for="contactNo" class="form-label">Contact Number</label>
-                            <input type="text" class="form-control" id="contactNo" name="contact_no">
+                            <input type="text" class="form-control" id="contactNo" name="contact_no" maxlength="10">
                         </div>
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
@@ -943,11 +1202,11 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -1103,7 +1362,7 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
             });
         }
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================
@@ -1262,4 +1521,5 @@ $averagePurchaseValue = $conn->query("SELECT AVG(total_amount) as avg FROM purch
         }
     </script>
 </body>
+
 </html>

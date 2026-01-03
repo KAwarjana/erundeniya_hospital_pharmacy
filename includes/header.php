@@ -184,7 +184,7 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
     
     .sidenav-toggler-line {
         height: 2px;
-        background-color: #344767;
+        background-color: #000;
         border-radius: 2px;
         transition: all 0.3s;
     }
@@ -207,7 +207,7 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
     margin-left: 0.255em !important;
     vertical-align: 0.255em !important;
     content: "" !important;
-    border-top: 0.3em solid #344767 !important;
+    border-top: 0.3em solid #000 !important;
     border-right: 0.3em solid transparent !important;
     border-left: 0.3em solid transparent !important;
     border-bottom: 0 !important;
@@ -235,4 +235,28 @@ $page_title = ucfirst(str_replace('_', ' ', $current_page));
         visibility: visible !important;
     }
 }
+        nav[aria-label="breadcrumb"] {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .breadcrumb {
+            margin-bottom: 0 !important;
+        }
+
+        .breadcrumb {
+            display: flex !important;
+            align-items: center !important;
+            margin-bottom: 0 !important;
+        }
+
+        .breadcrumb-item {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .breadcrumb-item a {
+            display: flex !important;
+            align-items: center !important;
+        }
 </style>

@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'auth.php';
+require_once 'includes/pagination_helper.php'; // Add this line
 Auth::requireAuth();
 
 $conn = getDBConnection();
@@ -10,7 +11,45 @@ $dateFrom = $_GET['date_from'] ?? '';
 $dateTo = $_GET['date_to'] ?? '';
 $paymentType = $_GET['payment_type'] ?? '';
 
-// Build the query
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
+// First, get total count
+$countSql = "SELECT COUNT(*) as total FROM sales s";
+
+$whereConditions = [];
+$params = [];
+$types = "";
+
+if (!empty($dateFrom) && !empty($dateTo)) {
+    $whereConditions[] = "DATE(s.sale_date) BETWEEN ? AND ?";
+    $params[] = $dateFrom;
+    $params[] = $dateTo;
+    $types .= "ss";
+}
+
+if (!empty($paymentType)) {
+    $whereConditions[] = "s.payment_type = ?";
+    $params[] = $paymentType;
+    $types .= "s";
+}
+
+if (!empty($whereConditions)) {
+    $countSql .= " WHERE " . implode(" AND ", $whereConditions);
+}
+
+$countStmt = $conn->prepare($countSql);
+if (!empty($params)) {
+    $countStmt->bind_param($types, ...$params);
+}
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with pagination
 $sql = "SELECT 
     s.sale_id,
     s.sale_date,
@@ -26,46 +65,25 @@ LEFT JOIN customers c ON s.customer_id = c.customer_id
 LEFT JOIN users u ON s.user_id = u.user_id
 LEFT JOIN sale_items si ON s.sale_id = si.sale_id";
 
-$whereConditions = [];
-$params = [];
-$types = "";
-
-// Add date filter only if both dates are provided
-if (!empty($dateFrom) && !empty($dateTo)) {
-    $whereConditions[] = "DATE(s.sale_date) BETWEEN ? AND ?";
-    $params[] = $dateFrom;
-    $params[] = $dateTo;
-    $types .= "ss";
-}
-
-// Add payment type filter if provided
-if (!empty($paymentType)) {
-    $whereConditions[] = "s.payment_type = ?";
-    $params[] = $paymentType;
-    $types .= "s";
-}
-
-// Add WHERE clause if there are conditions
 if (!empty($whereConditions)) {
     $sql .= " WHERE " . implode(" AND ", $whereConditions);
 }
 
-$sql .= " GROUP BY s.sale_id ORDER BY s.sale_date DESC";
+$sql .= " GROUP BY s.sale_id ORDER BY s.sale_date DESC LIMIT ? OFFSET ?";
+
+// Add limit and offset to params
+$params[] = $pagination['limit'];
+$params[] = $pagination['offset'];
+$types .= "ii";
 
 $stmt = $conn->prepare($sql);
-if (!$stmt) {
-    die("Query preparation failed: " . $conn->error);
-}
-
-// Bind parameters only if there are any
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
-
 $stmt->execute();
 $sales = $stmt->get_result();
 
-// Get summary
+// Get summary (same as before)
 $summarySQL = "SELECT 
     COUNT(*) as total_sales,
     SUM(net_amount) as total_revenue,
@@ -94,22 +112,24 @@ if (!empty($summaryWhere)) {
 }
 
 $summaryStmt = $conn->prepare($summarySQL);
-
 if (!empty($summaryParams)) {
     $summaryStmt->bind_param($summaryTypes, ...$summaryParams);
 }
-
 $summaryStmt->execute();
 $summary = $summaryStmt->get_result()->fetch_assoc();
+
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
 ?>
 <!DOCTYPE html>
 <html lang="en" dir="ltr" data-bs-theme="light">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Sales History - E. W. D. Erundeniya</title>
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
-    
+    <title>Erundeniya Hospital Pharmacy</title>
+    <link rel="shortcut icon" href="assets/images/logof1.png">
+
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
@@ -117,6 +137,7 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
 
     <style>
         /* Dashboard matching styles */
@@ -202,8 +223,8 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
         }
 
         .btn-dark {
-            background-color: #344767;
-            border-color: #344767;
+            background-color: #000;
+            border-color: #000;
         }
 
         .btn-dark:hover {
@@ -277,7 +298,7 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
             }
         }
 
-        
+
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -583,8 +604,298 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
         .filter-card .card-body {
             padding: 1.5rem;
         }
+
+        /* ============================================
+   SEARCH BAR ICON POSITIONING FIX
+   ============================================ */
+
+        /* Fix for search icon positioning in input groups */
+        .input-group .input-group-text {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 40px !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+
+        .input-group .input-group-text .material-symbols-rounded {
+            font-size: 20px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Ensure search icon is visible */
+        .input-group-text i,
+        .input-group-text .material-symbols-rounded {
+            color: #6c757d !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* ============================================
+   FILTER FORM ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix filter form row alignment */
+        form[method="GET"].row.g-3 {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
+            margin-left: -0.5rem !important;
+            margin-right: -0.5rem !important;
+        }
+
+        form[method="GET"].row.g-3 .col-md-3 {
+            display: flex !important;
+            flex-direction: column !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-bottom: 0 !important;
+        }
+
+        form[method="GET"].row.g-3 .col-md-3 {
+            flex: 1 1 auto !important;
+        }
+
+        /* Last column with buttons */
+        form[method="GET"].row.g-3 .col-md-3:last-child {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }
+
+        /* ============================================
+   FILTER/RESET BUTTONS ALIGNMENT
+   ============================================ */
+
+        /* Ensure filter buttons stay horizontal */
+        form[method="GET"].row.g-3 .col-md-3.d-flex.align-items-end.gap-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+        }
+
+        form[method="GET"].row.g-3 .col-md-3.d-flex.align-items-end.gap-2 .btn {
+            flex-shrink: 0 !important;
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+        }
+
+        /* Match button height with inputs */
+        form[method="GET"] .row .btn-sm {
+            height: calc(1.5em + 1rem + 2px) !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.8125rem !important;
+            line-height: 1.5 !important;
+        }
+
+        /* ============================================
+   HEADER TITLE ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix "Recent Sales X sales found" alignment */
+        .card-header.pb-0.card-header-responsive>div:first-child {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: baseline !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .card-header.pb-0.card-header-responsive h6 {
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+        }
+
+        .card-header.pb-0.card-header-responsive p.text-sm.mb-0 {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.25rem !important;
+        }
+
+        /* Fix icon alignment in the text */
+        .card-header.pb-0.card-header-responsive p.text-sm.mb-0 i {
+            margin-right: 0.25rem !important;
+        }
+
+        /* ============================================
+   ACTION BUTTONS ALIGNMENT FIX
+   ============================================ */
+
+        /* Keep action buttons in same row */
+        .table td.align-middle.text-center {
+            white-space: nowrap !important;
+            padding: 1rem 0.5rem !important;
+        }
+
+        .table .btn-group {
+            display: inline-flex !important;
+            gap: 0.25rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .table .btn-icon {
+            flex-shrink: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* ============================================
+   STATUS BADGES ALIGNMENT
+   ============================================ */
+
+        /* Ensure status badges are properly aligned */
+        .table .status-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            padding: 4px 12px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+        }
+
+        /* ============================================
+   RESPONSIVE FIXES
+   ============================================ */
+
+        @media (max-width: 767px) {
+
+            /* Stack elements on mobile */
+            form[method="GET"].row.g-3 {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            form[method="GET"].row.g-3 .col-md-3 {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            form[method="GET"].row.g-3 .col-md-3.d-flex.align-items-end.gap-2 {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+
+            form[method="GET"].row.g-3 .col-md-3.d-flex.align-items-end.gap-2 .btn {
+                width: 100% !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+
+            /* Maintain horizontal layout on desktop */
+            form[method="GET"].row.g-3 .col-md-3 {
+                flex: 0 0 25% !important;
+                max-width: 25% !important;
+            }
+
+            form[method="GET"].row.g-3 .col-md-3:last-child {
+                flex: 0 0 auto !important;
+                width: auto !important;
+            }
+        }
+
+        /* ============================================
+   TABLE CELL CONTENT ALIGNMENT
+   ============================================ */
+
+        /* Center align content in table cells */
+        .table tbody td {
+            vertical-align: middle !important;
+        }
+
+        /* Ensure text doesn't wrap unnecessarily */
+        .table tbody td .text-sm {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 200px !important;
+        }
+
+        .table tbody td .text-xs {
+            white-space: nowrap !important;
+        }
+
+        /* ============================================
+   INPUT GROUP SPECIFIC FIXES
+   ============================================ */
+
+        /* Fix input group with search icon */
+        .input-group {
+            display: flex !important;
+            align-items: stretch !important;
+            width: 100% !important;
+        }
+
+        .input-group .form-control {
+            flex: 1 1 auto !important;
+            border-left: 1px solid #e9ecef !important;
+        }
+
+        .input-group .form-control:focus {
+            border-left: 1px solid #000 !important;
+        }
+
+        /* Ensure proper border radius */
+        .input-group .input-group-text:first-child {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .input-group .form-control:not(:first-child):not(:last-child) {
+            border-radius: 0 !important;
+        }
+
+        .input-group .form-control:last-child {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
+
+        /* ============================================
+   FORM LABEL ALIGNMENT
+   ============================================ */
+
+        /* Ensure form labels are properly aligned */
+        .form-label.text-sm {
+            display: block !important;
+            margin-bottom: 0.5rem !important;
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+        }
+
+        /* ============================================
+   EXPORT BUTTON ALIGNMENT
+   ============================================ */
+
+        /* Ensure export button stays properly positioned */
+        .card-header.pb-0.card-header-responsive>div:last-child {
+            display: flex !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .card-header.pb-0.card-header-responsive .btn-sm {
+            flex-shrink: 0 !important;
+        }
     </style>
 </head>
+
 <body class="g-sidenav-show bg-gray-100">
     <div id="loading">
         <div class="simple-loader">
@@ -687,10 +998,10 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
                         <div class="card-header pb-0 card-header-responsive">
                             <div>
                                 <h6>Recent Sales</h6>
-                                <p class="text-sm mb-0">
+                                (<p class="text-sm mb-2">
                                     <i class="fa fa-check text-info" aria-hidden="true"></i>
                                     <span class="font-weight-bold ms-1"><?php echo $sales->num_rows; ?></span> sales found
-                                </p>
+                                </p>)
                             </div>
                             <div>
                                 <button type="button" class="btn btn-sm btn-dark mb-0" onclick="exportSalesReport()">
@@ -747,60 +1058,60 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php 
+                                        <?php
                                         if ($sales->num_rows > 0):
-                                            while ($sale = $sales->fetch_assoc()): 
+                                            while ($sale = $sales->fetch_assoc()):
                                         ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex px-2 py-1">
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <h6 class="mb-0 text-sm">#<?php echo str_pad($sale['sale_id'], 5, '0', STR_PAD_LEFT); ?></h6>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex px-2 py-1">
+                                                            <div class="d-flex flex-column justify-content-center">
+                                                                <h6 class="mb-0 text-sm">#<?php echo str_pad($sale['sale_id'], 5, '0', STR_PAD_LEFT); ?></h6>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="text-xs font-weight-bold">
-                                                        <?php echo date('M d, Y', strtotime($sale['sale_date'])); ?><br>
-                                                        <?php echo date('h:i A', strtotime($sale['sale_date'])); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <p class="text-sm font-weight-bold mb-0"><?php echo htmlspecialchars($sale['customer_name'] ?? 'Walk-in'); ?></p>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-bold"><?php echo $sale['item_count']; ?></span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-bold">Rs. <?php echo number_format($sale['total_amount'], 2); ?></span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-bold">Rs. <?php echo number_format($sale['discount'], 2); ?></span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-bold text-dark">Rs. <?php echo number_format($sale['net_amount'], 2); ?></span>
-                                                </td>
-                                                <td class="align-middle text-center text-sm">
-                                                    <span class="status-badge status-<?php echo strtolower($sale['payment_type']); ?>">
-                                                        <?php echo ucfirst($sale['payment_type']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <p class="text-sm font-weight-bold mb-0"><?php echo htmlspecialchars($sale['user_name']); ?></p>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <button class="btn btn-sm btn-icon btn-info" onclick="viewSale(<?php echo $sale['sale_id']; ?>)" title="View Details">
-                                                        <i class="material-symbols-rounded" style="font-size: 16px;">visibility</i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-icon btn-success" onclick="printReceipt(<?php echo $sale['sale_id']; ?>)" title="Print Receipt">
-                                                        <i class="material-symbols-rounded" style="font-size: 16px;">print</i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php 
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-xs font-weight-bold">
+                                                            <?php echo date('M d, Y', strtotime($sale['sale_date'])); ?><br>
+                                                            <?php echo date('h:i A', strtotime($sale['sale_date'])); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <p class="text-sm font-weight-bold mb-0"><?php echo htmlspecialchars($sale['customer_name'] ?? 'Walk-in'); ?></p>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-bold"><?php echo $sale['item_count']; ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-bold">Rs. <?php echo number_format($sale['total_amount'], 2); ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-bold">Rs. <?php echo number_format($sale['discount'], 2); ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-bold text-dark">Rs. <?php echo number_format($sale['net_amount'], 2); ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center text-sm">
+                                                        <span class="status-badge status-<?php echo strtolower($sale['payment_type']); ?>">
+                                                            <?php echo ucfirst($sale['payment_type']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <p class="text-sm font-weight-bold mb-0"><?php echo htmlspecialchars($sale['user_name']); ?></p>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <button class="btn btn-sm btn-icon btn-info" onclick="viewSale(<?php echo $sale['sale_id']; ?>)" title="View Details">
+                                                            <i class="material-symbols-rounded" style="font-size: 16px;">visibility</i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-icon btn-success" onclick="printReceipt(<?php echo $sale['sale_id']; ?>)" title="Print Receipt">
+                                                            <i class="material-symbols-rounded" style="font-size: 16px;">print</i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php
                                             endwhile;
                                         else:
-                                        ?>
+                                            ?>
                                             <tr>
                                                 <td colspan="10" class="text-center py-4">
                                                     <div class="alert alert-info mb-0">
@@ -818,6 +1129,23 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- <p class="text-sm mb-0">
+                                <i class="fa fa-check text-info" aria-hidden="true"></i>
+                                <span class="font-weight-bold ms-1"><?php echo getPaginationInfo($pagination, $sales->num_rows); ?></span>
+                            </p> -->
+
+                            <!-- After the closing </table> tag, add: -->
+                            <?php if ($sales->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $sales->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -867,11 +1195,11 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -937,19 +1265,19 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
         function exportSalesReport() {
             const urlParams = new URLSearchParams(window.location.search);
             let exportUrl = 'export_sales.php?';
-            
+
             const dateFrom = urlParams.get('date_from');
             const dateTo = urlParams.get('date_to');
             const paymentType = urlParams.get('payment_type');
-            
+
             if (dateFrom) exportUrl += 'date_from=' + dateFrom + '&';
             if (dateTo) exportUrl += 'date_to=' + dateTo + '&';
             if (paymentType) exportUrl += 'payment_type=' + paymentType;
-            
+
             window.location.href = exportUrl;
         }
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================
@@ -1108,4 +1436,5 @@ $summary = $summaryStmt->get_result()->fetch_assoc();
         }
     </script>
 </body>
+
 </html>

@@ -13,9 +13,9 @@
             <div class="col-lg-6">
                 <ul class="nav nav-footer justify-content-center justify-content-lg-end">
                     <li class="nav-item">
-                        <a href="about.php" class="nav-link text-muted" target="_blank">About Us</a>
+                        <span class="nav-link text-muted" target="_blank">Version 1.0 (260105)</span>
                     </li>
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a href="help.php" class="nav-link text-muted" target="_blank">Help Center</a>
                     </li>
                     <li class="nav-item">
@@ -23,7 +23,7 @@
                     </li>
                     <li class="nav-item">
                         <a href="privacy.php" class="nav-link pe-0 text-muted" target="_blank">Privacy Policy</a>
-                    </li>
+                    </li> -->
                 </ul>
             </div>
         </div>
@@ -42,7 +42,7 @@
     }
     
     .footer .copyright a {
-        color: #344767;
+        color: #000;
         text-decoration: none;
         transition: color 0.3s ease;
     }

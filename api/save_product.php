@@ -75,11 +75,8 @@ try {
     }
     
     if ($productId > 0) {
-        // Update existing product - FIXED: Corrected parameter binding
+        // Update existing product
         $stmt = $conn->prepare("UPDATE products SET product_name = ?, generic_name = ?, unit = ?, reorder_level = ?, status = ?, supplier_id = ? WHERE product_id = ?");
-        
-        // Format: s=string, i=integer
-        // product_name(s), generic_name(s), unit(s), reorder_level(i), status(s), supplier_id(i), product_id(i)
         $stmt->bind_param("sssisii", $productName, $genericName, $unit, $reorderLevel, $status, $productSupplierId, $productId);
         
         if ($stmt->execute()) {
@@ -89,9 +86,13 @@ try {
             throw new Exception('Failed to update product: ' . $stmt->error);
         }
     } else {
-        // Insert new product
-        $stmt = $conn->prepare("INSERT INTO products (product_name, generic_name, unit, reorder_level, status, supplier_id) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssisi", $productName, $genericName, $unit, $reorderLevel, $status, $productSupplierId);
+        // Insert new product - MANUALLY SET display_id
+        // Get next display_id
+        $result = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_display_id FROM products");
+        $nextDisplayId = $result->fetch_assoc()['next_display_id'];
+        
+        $stmt = $conn->prepare("INSERT INTO products (product_name, generic_name, unit, reorder_level, status, supplier_id, display_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssisis", $productName, $genericName, $unit, $reorderLevel, $status, $productSupplierId, $nextDisplayId);
         
         if (!$stmt->execute()) {
             throw new Exception('Failed to add product: ' . $stmt->error);
@@ -110,9 +111,13 @@ try {
                 throw new Exception('Batch number already exists for this product');
             }
             
-            // Insert batch - cost_price can be NULL
-            $stmt = $conn->prepare("INSERT INTO product_batches (product_id, batch_no, expiry_date, cost_price, selling_price, quantity_in_stock) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("issddi", $newProductId, $batchNo, $expiryDate, $costPrice, $sellingPrice, $quantity);
+            // Get next display_id for batch
+            $result = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_display_id FROM product_batches");
+            $nextBatchDisplayId = $result->fetch_assoc()['next_display_id'];
+            
+            // Insert batch with display_id
+            $stmt = $conn->prepare("INSERT INTO product_batches (product_id, batch_no, expiry_date, cost_price, selling_price, quantity_in_stock, display_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("issdiii", $newProductId, $batchNo, $expiryDate, $costPrice, $sellingPrice, $quantity, $nextBatchDisplayId);
             
             if (!$stmt->execute()) {
                 throw new Exception('Failed to add batch: ' . $stmt->error);
@@ -120,14 +125,17 @@ try {
             
             $newBatchId = $conn->insert_id;
             
-            // Create purchase record ONLY if initial stock is added
+            // Create purchase record with display_id
             $userInfo = Auth::getUserInfo();
             $totalAmount = $costPrice !== null ? ($costPrice * $quantity) : 0.00;
             $invoiceNo = 'AUTO-' . date('YmdHis');
             
-            // Use product's supplier for the purchase (can be NULL)
-            $stmt = $conn->prepare("INSERT INTO purchases (supplier_id, user_id, invoice_no, total_amount) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("iisd", $productSupplierId, $userInfo['user_id'], $invoiceNo, $totalAmount);
+            // Get next display_id for purchase
+            $result = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_display_id FROM purchases");
+            $nextPurchaseDisplayId = $result->fetch_assoc()['next_display_id'];
+            
+            $stmt = $conn->prepare("INSERT INTO purchases (supplier_id, user_id, invoice_no, total_amount, display_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("iisdi", $productSupplierId, $userInfo['user_id'], $invoiceNo, $totalAmount, $nextPurchaseDisplayId);
             
             if (!$stmt->execute()) {
                 throw new Exception('Failed to create purchase record: ' . $stmt->error);
@@ -159,9 +167,9 @@ try {
             }
             
             // Add purchase record info to message
-            $message .= ' - Purchase record #' . str_pad($purchaseId, 5, '0', STR_PAD_LEFT) . ' created';
+            $message .= ' - Purchase record #' . str_pad($nextPurchaseDisplayId, 2, '0', STR_PAD_LEFT) . ' created';
         } else {
-            // Product added without initial stock - no purchase record created
+            // Product added without initial stock
             if ($productSupplierId !== null) {
                 $stmt = $conn->prepare("SELECT name FROM suppliers WHERE supplier_id = ?");
                 $stmt->bind_param("i", $productSupplierId);
@@ -178,7 +186,8 @@ try {
         echo json_encode([
             'success' => true, 
             'message' => $message, 
-            'product_id' => $newProductId
+            'product_id' => $newProductId,
+            'display_id' => sprintf('%02d', $nextDisplayId)
         ]);
     }
     

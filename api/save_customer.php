@@ -19,8 +19,12 @@ if ($customerId > 0) {
     $stmt->bind_param("sssdi", $name, $contactNo, $address, $creditLimit, $customerId);
     $message = 'Customer updated successfully';
 } else {
-    $stmt = $conn->prepare("INSERT INTO customers (name, contact_no, address, credit_limit) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("sssd", $name, $contactNo, $address, $creditLimit);
+    // Get next display_id for new customer
+    $result = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_display_id FROM customers");
+    $nextDisplayId = $result->fetch_assoc()['next_display_id'];
+    
+    $stmt = $conn->prepare("INSERT INTO customers (name, contact_no, address, credit_limit, display_id) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("sssdi", $name, $contactNo, $address, $creditLimit, $nextDisplayId);
     $message = 'Customer added successfully';
 }
 

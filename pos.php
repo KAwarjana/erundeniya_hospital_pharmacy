@@ -14,7 +14,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>POS - E. W. D. Erundeniya</title>
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Material Dashboard CSS -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
@@ -22,7 +22,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400,500,600,700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
+    <link rel="shortcut icon" href="assets/images/logof1.png">
 
     <style>
         /* Main Content - Same as Dashboard */
@@ -674,6 +674,17 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                 height: 12px !important;
             }
         }
+
+    .modal-header {
+        border-bottom: 1px solid #dee2e6;
+        padding: 1.5rem;
+        background-color: #0f1a0fff;
+    }
+
+    .modal-header .modal-title {
+        color: #f8fffbff !important;
+        font-size: 1.25rem;
+    }
     </style>
 </head>
 
@@ -748,7 +759,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                         <div class="col-12 col-md-6 mb-3">
                                             <label class="form-label"><strong>Mobile Number</strong></label>
                                             <input type="text" class="form-control" id="customerMobile"
-                                                placeholder="Enter mobile number (optional)">
+                                                placeholder="Enter mobile number (optional)" maxlength="10">
                                         </div>
                                     </div>
                                 </div>

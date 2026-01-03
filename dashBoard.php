@@ -59,9 +59,9 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Dashboard - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -360,7 +360,7 @@ $expiringSoon = $conn->query("SELECT p.product_name, pb.batch_no, pb.expiry_date
         }
 
         .modal-header .modal-title {
-            color: #344767;
+            color: #000;
             font-size: 1.25rem;
         }
 

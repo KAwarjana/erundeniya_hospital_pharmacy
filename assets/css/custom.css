@@ -2432,3 +2432,576 @@ table .btn-icon:hover,
         display: none !important;
     }
 }
+
+
+
+
+
+
+
+
+
+/* ============================================
+   CRITICAL ALIGNMENT & INPUT FIXES
+   Add this CSS to the <style> section of each page
+   ============================================ */
+
+/* ============================================
+   BREADCRUMB FIXES
+   ============================================ */
+
+/* Fix breadcrumb alignment and spacing */
+.dashboard-header {
+    padding-left: 2rem !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.dashboard-header h3 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 0.5rem !important;
+    line-height: 1.2;
+}
+
+.dashboard-header p {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 1.5;
+}
+
+@media (max-width: 1199.98px) {
+    .dashboard-header {
+        padding-left: 1rem !important;
+    }
+}
+
+/* ============================================
+   INPUT FIELD FIXES - CRITICAL
+   ============================================ */
+
+/* All form controls - proper borders and padding */
+.form-control,
+.form-select {
+    border: 1px solid #d2d6da !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 0.875rem !important; /* Top/Bottom: 10px, Left/Right: 14px */
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+    background-color: #fff !important;
+}
+
+/* Small form controls */
+.form-control-sm,
+.form-select-sm {
+    border: 1px solid #d2d6da !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important; /* Top/Bottom: 8px, Left/Right: 12px */
+    font-size: 0.813rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Focus state for inputs */
+.form-control:focus,
+.form-select:focus {
+    border-color: #000 !important;
+    box-shadow: 0 0 0 0.2rem rgba(52, 71, 103, 0.25) !important;
+    outline: 0 !important;
+}
+
+/* Input group text borders */
+.input-group-text {
+    border: 1px solid #d2d6da !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 0.875rem !important;
+    background-color: #f8f9fa !important;
+    font-size: 0.875rem !important;
+}
+
+/* Input group - fix border connection */
+.input-group > .form-control,
+.input-group > .form-select {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.input-group > .form-control:not(:first-child),
+.input-group > .form-select:not(:first-child) {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: 0 !important;
+}
+
+.input-group > .form-control:not(:last-child),
+.input-group > .form-select:not(:last-child) {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: 0 !important;
+}
+
+.input-group > .input-group-text:not(:last-child) {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: 0 !important;
+}
+
+.input-group > .input-group-text:not(:first-child) {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: 0 !important;
+}
+
+/* Textarea specific padding */
+textarea.form-control {
+    padding: 0.625rem 0.875rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Disabled state */
+.form-control:disabled,
+.form-select:disabled {
+    background-color: #e9ecef !important;
+    opacity: 1 !important;
+    border-color: #d2d6da !important;
+}
+
+/* Readonly state */
+.form-control:read-only {
+    background-color: #e9ecef !important;
+    opacity: 1 !important;
+    border-color: #d2d6da !important;
+}
+
+/* ============================================
+   BUTTON ALIGNMENT FIXES
+   ============================================ */
+
+/* Card header button alignment */
+.card-header-responsive {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    padding: 1rem 1.5rem !important;
+}
+
+/* Button group alignment */
+.card-header-responsive > div:last-child {
+    display: flex !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+}
+
+/* All buttons - consistent sizing and alignment */
+.btn {
+    border-radius: 0.5rem !important;
+    font-weight: 500 !important;
+    padding: 0.625rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    transition: all 0.3s ease !important;
+    border: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* Small buttons */
+.btn-sm {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.813rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Icon buttons */
+.btn-icon {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.5rem !important;
+}
+
+/* Button icons inside buttons */
+.btn .material-symbols-rounded,
+.btn i {
+    margin: 0 !important;
+    font-size: 1.125rem !important;
+    line-height: 1 !important;
+}
+
+/* Filter form button alignment */
+form .col-md-3.d-flex.align-items-end,
+form .col-md-2.d-flex {
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 0.5rem !important;
+}
+
+/* ============================================
+   STATS GRID ALIGNMENT
+   ============================================ */
+
+.stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 1rem !important;
+    margin-bottom: 1.5rem !important;
+    width: 100% !important;
+}
+
+.stats-grid .card {
+    margin-bottom: 0 !important;
+}
+
+/* ============================================
+   CARD HEADER ALIGNMENT
+   ============================================ */
+
+.card-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 1rem 1.5rem !important;
+    background-color: #fff !important;
+    border-bottom: 1px solid #e9ecef !important;
+    border-radius: 0.75rem 0.75rem 0 0 !important;
+}
+
+.card-header h6,
+.card-header h5,
+.card-header h4 {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.5 !important;
+}
+
+/* ============================================
+   FILTER CARD ALIGNMENT
+   ============================================ */
+
+.filter-card {
+    background: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+    border-radius: 0.75rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.filter-card .card-body {
+    padding: 1.5rem !important;
+}
+
+.filter-card form {
+    margin: 0 !important;
+}
+
+.filter-card .row {
+    align-items: flex-end !important;
+}
+
+/* ============================================
+   FORM LABEL ALIGNMENT
+   ============================================ */
+
+.form-label {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #000 !important;
+    margin-bottom: 0.5rem !important;
+    line-height: 1.5 !important;
+    display: block !important;
+}
+
+/* Label alignment in columns */
+.col-md-3 .form-label,
+.col-md-4 .form-label,
+.col-md-6 .form-label {
+    margin-bottom: 0.5rem !important;
+}
+
+/* ============================================
+   TABLE RESPONSIVE ALIGNMENT
+   ============================================ */
+
+.table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 0 !important;
+}
+
+.mobile-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* ============================================
+   MODAL ALIGNMENT FIXES
+   ============================================ */
+
+.modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 1.25rem 1.5rem !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.modal-body {
+    padding: 1.5rem !important;
+}
+
+.modal-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.5rem !important;
+    padding: 1.25rem 1.5rem !important;
+    border-top: 1px solid #e9ecef !important;
+}
+
+/* ============================================
+   ROW AND COLUMN ALIGNMENT
+   ============================================ */
+
+/* Gap utilities for rows */
+.row.g-2 {
+    --bs-gutter-x: 0.5rem !important;
+    --bs-gutter-y: 0.5rem !important;
+}
+
+.row.g-3 {
+    --bs-gutter-x: 1rem !important;
+    --bs-gutter-y: 1rem !important;
+}
+
+/* Align items in rows */
+.row.align-items-end {
+    align-items: flex-end !important;
+}
+
+.row.align-items-center {
+    align-items: center !important;
+}
+
+/* ============================================
+   SEARCH INPUT ALIGNMENT
+   ============================================ */
+
+/* Search input in filter forms */
+.input-group {
+    position: relative !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: stretch !important;
+    width: 100% !important;
+}
+
+.input-group > * {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    width: 1% !important;
+    min-width: 0 !important;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 576px) {
+    /* Stack buttons vertically on mobile */
+    .card-header-responsive {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .card-header-responsive > div:last-child {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .card-header-responsive .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Stats grid single column on mobile */
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Filter forms on mobile */
+    .filter-card .row {
+        row-gap: 1rem !important;
+    }
+
+    .filter-card .col-md-2,
+    .filter-card .col-md-3,
+    .filter-card .col-md-4,
+    .filter-card .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Form controls on mobile */
+    .form-control,
+    .form-select {
+        font-size: 1rem !important; /* Prevent zoom on iOS */
+    }
+
+    /* Buttons on mobile */
+    .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .d-flex.gap-2 {
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+}
+
+/* ============================================
+   FIX FOR SAFARI/IOS
+   ============================================ */
+
+/* Prevent input zoom on iOS */
+@supports (-webkit-touch-callout: none) {
+    .form-control,
+    .form-select {
+        font-size: max(16px, 0.875rem) !important;
+    }
+}
+
+/* ============================================
+   ADDITIONAL INPUT STATES
+   ============================================ */
+
+/* Invalid state */
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Valid state */
+.form-control.is-valid,
+.form-select.is-valid {
+    border-color: #28a745 !important;
+}
+
+.form-control.is-valid:focus,
+.form-select.is-valid:focus {
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+}
+
+/* ============================================
+   PLACEHOLDER TEXT ALIGNMENT
+   ============================================ */
+
+.form-control::placeholder,
+.form-select::placeholder {
+    color: #6c757d !important;
+    opacity: 0.7 !important;
+}
+
+/* ============================================
+   SUPPLIER DROPDOWN ALIGNMENT (purchases.php)
+   ============================================ */
+
+.supplier-search-wrapper {
+    position: relative !important;
+}
+
+.supplier-dropdown {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    background: white !important;
+    border: 1px solid #d2d6da !important;
+    border-top: none !important;
+    border-radius: 0 0 0.5rem 0.5rem !important;
+    box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15) !important;
+    z-index: 1000 !important;
+}
+
+.supplier-dropdown-item {
+    padding: 12px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+
+/* ============================================
+   PASSWORD FIELD ALIGNMENT (settings.php)
+   ============================================ */
+
+.password-field-wrapper {
+    position: relative !important;
+}
+
+.password-toggle-icon {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+}
+
+.password-field-wrapper input {
+    padding-right: 45px !important;
+}
+
+/* ============================================
+   PRINT STYLES FIX
+   ============================================ */
+
+@media print {
+    .form-control,
+    .form-select,
+    .btn {
+        border: 1px solid #000 !important;
+        padding: 0.5rem !important;
+    }
+}
+
+/* ============================================
+   CRITICAL: ENSURE NO LAYOUT SHIFTS
+   ============================================ */
+
+* {
+    box-sizing: border-box !important;
+}
+
+.container-fluid {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+.row {
+    margin-left: -0.5rem !important;
+    margin-right: -0.5rem !important;
+}
+
+.row > * {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}

@@ -87,9 +87,9 @@ ORDER BY pb.expiry_date ASC");
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Reports - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -98,8 +98,17 @@ ORDER BY pb.expiry_date ASC");
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
 
     <style>
+        /* CRITICAL: Override any conflicting overflow properties */
+        .navbar,
+        .navbar-main,
+        #navbarBlur,
+        .container-fluid {
+            overflow: visible !important;
+        }
+
         /* Dashboard Style Enhancements */
         .stats-grid {
             display: grid;
@@ -116,6 +125,7 @@ ORDER BY pb.expiry_date ASC");
 
         /* Print Styles */
         @media print {
+
             /* Hide elements that shouldn't be printed */
             #loading,
             .sidenav,
@@ -234,7 +244,7 @@ ORDER BY pb.expiry_date ASC");
         .card-header h4,
         .card-header h6 {
             margin-bottom: 0;
-            color: #344767;
+            color: #000;
             font-weight: 600;
         }
 
@@ -305,13 +315,15 @@ ORDER BY pb.expiry_date ASC");
         }
 
         /* Form Enhancements */
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border-radius: 0.5rem;
             border: 1px solid #e9ecef;
             transition: all 0.3s ease;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: #42424a;
             box-shadow: 0 0 0 0.2rem rgba(66, 66, 74, 0.25);
         }
@@ -386,8 +398,13 @@ ORDER BY pb.expiry_date ASC");
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Mobile Responsive */
@@ -453,12 +470,12 @@ ORDER BY pb.expiry_date ASC");
             -webkit-text-fill-color: #000 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
-        
+
         input:-webkit-autofill {
             caret-color: #000;
         }
 
-        
+
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -738,17 +755,12 @@ ORDER BY pb.expiry_date ASC");
         }
 
         /* ============================================
-   NAVBAR & DROPDOWN FIX
+   NAVBAR & DROPDOWN FIX - CRITICAL SECTION
    ============================================ */
 
+        /* Remove any conflicting dropdown styles */
         .navbar .dropdown-menu {
-            position: absolute;
-            z-index: 1060 !important;
-            box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15);
-        }
-
-        .navbar {
-            z-index: 1050 !important;
+            box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15) !important;
         }
 
         /* ============================================
@@ -763,6 +775,180 @@ ORDER BY pb.expiry_date ASC");
 
         .filter-card .card-body {
             padding: 1.5rem;
+        }
+
+        /* Force form to be responsive */
+        .filter-card form.row.g-3 {
+            display: flex !important;
+            flex-wrap: wrap !important;
+        }
+
+        /* Desktop - Keep buttons in one row */
+        @media (min-width: 992px) {
+            .filter-card .col-md-3 {
+                flex: 0 0 auto !important;
+                width: 25% !important;
+            }
+
+            .filter-card .col-md-6 {
+                flex: 0 0 auto !important;
+                width: 50% !important;
+            }
+
+            .filter-card .col-md-6.d-flex {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 0.5rem !important;
+            }
+
+            .filter-card .col-md-6 .btn {
+                flex: 0 0 auto !important;
+                white-space: nowrap !important;
+            }
+        }
+
+        /* Tablet - Start stacking */
+        @media (max-width: 1500px) and (min-width: 768px) {
+            .filter-card .col-md-3 {
+                flex: 0 0 auto !important;
+                width: 48% !important;
+                margin-bottom: 1rem !important;
+            }
+
+            .filter-card .col-md-6 {
+                flex: 0 0 auto !important;
+                width: 100% !important;
+                margin-bottom: 0 !important;
+            }
+
+            .filter-card .col-md-6.d-flex {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 0.5rem !important;
+            }
+
+            .filter-card .col-md-6 .btn {
+                flex: 1 1 calc(50% - 0.25rem) !important;
+                min-width: 150px !important;
+            }
+        }
+
+        /* Mobile - Full stack */
+        @media (max-width: 767px) {
+
+            /* Force all columns to full width */
+            .filter-card .col-md-3,
+            .filter-card .col-md-6,
+            .filter-card .row.g-3>* {
+                flex: 0 0 auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin-bottom: 1rem !important;
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+
+            /* Stack buttons vertically */
+            .filter-card .col-md-6.d-flex,
+            .filter-card .col-md-6.d-flex.align-items-end,
+            .filter-card .col-md-6.d-flex.align-items-end.gap-2 {
+                display: flex !important;
+                flex-direction: column !important;
+                flex-wrap: nowrap !important;
+                gap: 0.5rem !important;
+                width: 100% !important;
+            }
+
+            /* Make all buttons full width */
+            .filter-card .btn,
+            .filter-card .col-md-6 .btn,
+            .filter-card .d-flex .btn {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 0 0 auto !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                display: flex !important;
+            }
+
+            /* Adjust button padding for mobile */
+            .filter-card .btn {
+                padding: 0.625rem 1rem !important;
+                font-size: 0.875rem !important;
+                height: auto !important;
+                min-height: 42px !important;
+            }
+
+            /* Input groups full width */
+            .filter-card .input-group {
+                width: 100% !important;
+            }
+
+            /* Form controls full width */
+            .filter-card .form-control,
+            .filter-card .form-select {
+                width: 100% !important;
+            }
+
+            /* Remove any bottom margin from last item */
+            .filter-card .row.g-3>*:last-child {
+                margin-bottom: 0 !important;
+            }
+        }
+
+        /* Extra small screens - smaller buttons */
+        @media (max-width: 576px) {
+            .filter-card .btn {
+                padding: 0.5rem 0.875rem !important;
+                font-size: 0.8125rem !important;
+                min-height: 38px !important;
+            }
+
+            .filter-card .btn .material-symbols-rounded,
+            .filter-card .btn i {
+                font-size: 16px !important;
+            }
+
+            /* Smaller form controls */
+            .filter-card .form-control,
+            .filter-card .form-select {
+                font-size: 0.8125rem !important;
+                padding: 0.5rem 0.875rem !important;
+            }
+
+            .filter-card .input-group-text {
+                padding: 0.5rem 0.75rem !important;
+            }
+        }
+
+        /* Very small screens */
+        @media (max-width: 400px) {
+            .filter-card .btn {
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.75rem !important;
+                min-height: 36px !important;
+            }
+
+            .filter-card .form-label {
+                font-size: 0.75rem !important;
+            }
+        }
+
+        /* CRITICAL: Override any conflicting styles */
+        @media (max-width: 767px) {
+
+            .filter-card .col-md-6.d-flex.gap-2,
+            .filter-card .col-md-6.d-flex.align-items-end.gap-2 {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            /* Force override Bootstrap's flex utilities on mobile */
+            .filter-card .row.g-3.align-items-end {
+                align-items: stretch !important;
+            }
         }
     </style>
 </head>
@@ -897,7 +1083,7 @@ ORDER BY pb.expiry_date ASC");
                                             $totalGross = 0;
                                             $totalDiscount = 0;
                                             $totalNet = 0;
-                                            
+
                                             if ($salesData->num_rows > 0):
                                                 while ($row = $salesData->fetch_assoc()):
                                                     $totalSales += $row['total_sales'];
@@ -905,32 +1091,32 @@ ORDER BY pb.expiry_date ASC");
                                                     $totalDiscount += $row['total_discount'];
                                                     $totalNet += $row['net_sales'];
                                             ?>
-                                                <tr>
-                                                    <td>
-                                                        <div class="d-flex px-2 py-1">
-                                                            <div class="d-flex flex-column justify-content-center">
-                                                                <h6 class="mb-0 text-sm"><?php echo date('M d, Y', strtotime($row['date'])); ?></h6>
-                                                                <p class="text-xs text-secondary mb-0"><?php echo date('l', strtotime($row['date'])); ?></p>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex px-2 py-1">
+                                                                <div class="d-flex flex-column justify-content-center">
+                                                                    <h6 class="mb-0 text-sm"><?php echo date('M d, Y', strtotime($row['date'])); ?></h6>
+                                                                    <p class="text-xs text-secondary mb-0"><?php echo date('l', strtotime($row['date'])); ?></p>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="align-middle text-center text-sm">
-                                                        <span class="badge bg-primary"><?php echo $row['total_sales']; ?></span>
-                                                    </td>
-                                                    <td class="align-middle text-center">
-                                                        <span class="text-sm font-weight-normal">Rs. <?php echo number_format($row['gross_sales'], 2); ?></span>
-                                                    </td>
-                                                    <td class="align-middle text-center">
-                                                        <span class="text-sm font-weight-normal">Rs. <?php echo number_format($row['total_discount'], 2); ?></span>
-                                                    </td>
-                                                    <td class="align-middle text-center">
-                                                        <span class="text-sm font-weight-bold text-success">Rs. <?php echo number_format($row['net_sales'], 2); ?></span>
-                                                    </td>
-                                                </tr>
-                                            <?php 
+                                                        </td>
+                                                        <td class="align-middle text-center text-sm">
+                                                            <span class="badge bg-primary"><?php echo $row['total_sales']; ?></span>
+                                                        </td>
+                                                        <td class="align-middle text-center">
+                                                            <span class="text-sm font-weight-normal">Rs. <?php echo number_format($row['gross_sales'], 2); ?></span>
+                                                        </td>
+                                                        <td class="align-middle text-center">
+                                                            <span class="text-sm font-weight-normal">Rs. <?php echo number_format($row['total_discount'], 2); ?></span>
+                                                        </td>
+                                                        <td class="align-middle text-center">
+                                                            <span class="text-sm font-weight-bold text-success">Rs. <?php echo number_format($row['net_sales'], 2); ?></span>
+                                                        </td>
+                                                    </tr>
+                                                <?php
                                                 endwhile;
                                             else:
-                                            ?>
+                                                ?>
                                                 <tr>
                                                     <td colspan="5" class="text-center py-5">
                                                         <div class="d-flex flex-column align-items-center">
@@ -949,15 +1135,15 @@ ORDER BY pb.expiry_date ASC");
                                             <?php endif; ?>
                                         </tbody>
                                         <?php if ($salesData->num_rows > 0): ?>
-                                        <tfoot>
-                                            <tr class="table-primary">
-                                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">TOTAL</th>
-                                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"><?php echo $totalSales; ?></th>
-                                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalGross, 2); ?></th>
-                                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalDiscount, 2); ?></th>
-                                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalNet, 2); ?></th>
-                                            </tr>
-                                        </tfoot>
+                                            <tfoot>
+                                                <tr class="table-primary">
+                                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">TOTAL</th>
+                                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7"><?php echo $totalSales; ?></th>
+                                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalGross, 2); ?></th>
+                                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalDiscount, 2); ?></th>
+                                                    <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Rs. <?php echo number_format($totalNet, 2); ?></th>
+                                                </tr>
+                                            </tfoot>
                                         <?php endif; ?>
                                     </table>
                                 </div>
@@ -997,29 +1183,29 @@ ORDER BY pb.expiry_date ASC");
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php 
+                                        <?php
                                         if ($topProductsData->num_rows > 0):
-                                            while ($product = $topProductsData->fetch_assoc()): 
+                                            while ($product = $topProductsData->fetch_assoc()):
                                         ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex px-2 py-1">
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($product['product_name']); ?></h6>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex px-2 py-1">
+                                                            <div class="d-flex flex-column justify-content-center">
+                                                                <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($product['product_name']); ?></h6>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td class="align-middle text-center text-sm">
-                                                    <span class="badge bg-warning text-dark"><?php echo $product['total_quantity']; ?></span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-bold text-success">Rs. <?php echo number_format($product['total_revenue'], 2); ?></span>
-                                                </td>
-                                            </tr>
-                                        <?php 
+                                                    </td>
+                                                    <td class="align-middle text-center text-sm">
+                                                        <span class="badge bg-warning text-dark"><?php echo $product['total_quantity']; ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-bold text-success">Rs. <?php echo number_format($product['total_revenue'], 2); ?></span>
+                                                    </td>
+                                                </tr>
+                                            <?php
                                             endwhile;
                                         else:
-                                        ?>
+                                            ?>
                                             <tr>
                                                 <td colspan="3" class="text-center py-4">
                                                     <div class="d-flex flex-column align-items-center">
@@ -1064,29 +1250,29 @@ ORDER BY pb.expiry_date ASC");
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php 
+                                        <?php
                                         if ($lowStock->num_rows > 0):
-                                            while ($item = $lowStock->fetch_assoc()): 
+                                            while ($item = $lowStock->fetch_assoc()):
                                         ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex px-2 py-1">
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($item['product_name']); ?></h6>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex px-2 py-1">
+                                                            <div class="d-flex flex-column justify-content-center">
+                                                                <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($item['product_name']); ?></h6>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td class="align-middle text-center text-sm">
-                                                    <span class="badge bg-danger"><?php echo $item['current_stock']; ?></span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-normal"><?php echo $item['reorder_level']; ?></span>
-                                                </td>
-                                            </tr>
-                                        <?php 
+                                                    </td>
+                                                    <td class="align-middle text-center text-sm">
+                                                        <span class="badge bg-danger"><?php echo $item['current_stock']; ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-normal"><?php echo $item['reorder_level']; ?></span>
+                                                    </td>
+                                                </tr>
+                                            <?php
                                             endwhile;
                                         else:
-                                        ?>
+                                            ?>
                                             <tr>
                                                 <td colspan="3" class="text-center py-4">
                                                     <div class="d-flex flex-column align-items-center">
@@ -1135,42 +1321,42 @@ ORDER BY pb.expiry_date ASC");
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php 
+                                        <?php
                                         if ($expiringProducts->num_rows > 0):
-                                            while ($exp = $expiringProducts->fetch_assoc()): 
+                                            while ($exp = $expiringProducts->fetch_assoc()):
                                                 $badgeClass = 'warning';
                                                 if ($exp['days_left'] < 0) $badgeClass = 'danger';
                                                 elseif ($exp['days_left'] <= 30) $badgeClass = 'warning';
                                         ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex px-2 py-1">
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($exp['product_name']); ?></h6>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex px-2 py-1">
+                                                            <div class="d-flex flex-column justify-content-center">
+                                                                <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($exp['product_name']); ?></h6>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="text-sm font-weight-normal"><?php echo htmlspecialchars($exp['batch_no']); ?></span>
-                                                </td>
-                                                <td class="align-middle text-center text-sm">
-                                                    <span class="text-xs font-weight-bold">
-                                                        <?php echo date('M d, Y', strtotime($exp['expiry_date'])); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="align-middle text-center text-sm">
-                                                    <span class="badge bg-<?php echo $badgeClass; ?>">
-                                                        <?php echo abs($exp['days_left']); ?> days <?php echo $exp['days_left'] < 0 ? 'ago' : 'left'; ?>
-                                                    </span>
-                                                </td>
-                                                <td class="align-middle text-center">
-                                                    <span class="text-sm font-weight-normal"><?php echo $exp['quantity_in_stock']; ?></span>
-                                                </td>
-                                            </tr>
-                                        <?php 
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-sm font-weight-normal"><?php echo htmlspecialchars($exp['batch_no']); ?></span>
+                                                    </td>
+                                                    <td class="align-middle text-center text-sm">
+                                                        <span class="text-xs font-weight-bold">
+                                                            <?php echo date('M d, Y', strtotime($exp['expiry_date'])); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="align-middle text-center text-sm">
+                                                        <span class="badge bg-<?php echo $badgeClass; ?>">
+                                                            <?php echo abs($exp['days_left']); ?> days <?php echo $exp['days_left'] < 0 ? 'ago' : 'left'; ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="align-middle text-center">
+                                                        <span class="text-sm font-weight-normal"><?php echo $exp['quantity_in_stock']; ?></span>
+                                                    </td>
+                                                </tr>
+                                            <?php
                                             endwhile;
                                         else:
-                                        ?>
+                                            ?>
                                             <tr>
                                                 <td colspan="5" class="text-center py-5">
                                                     <div class="d-flex flex-column align-items-center">
@@ -1234,11 +1420,11 @@ ORDER BY pb.expiry_date ASC");
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -1317,7 +1503,7 @@ ORDER BY pb.expiry_date ASC");
             window.location.href = 'export_stock.php';
         }
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================

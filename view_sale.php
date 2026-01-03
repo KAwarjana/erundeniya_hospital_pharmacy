@@ -66,7 +66,7 @@ $items->data_seek(0); // Reset the result pointer
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Sale - #<?php echo str_pad($saleId, 5, '0', STR_PAD_LEFT); ?></title>
     
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
+    <link rel="shortcut icon" href="assets/images/logof1.png">
     
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -75,6 +75,7 @@ $items->data_seek(0); // Reset the result pointer
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
 
     <style>
         /* Dashboard matching styles */
@@ -100,7 +101,7 @@ $items->data_seek(0); // Reset the result pointer
         }
         
         .sale-header h2 {
-            color: #344767;
+            color: #000;
             margin: 0;
             font-weight: 600;
         }
@@ -116,7 +117,7 @@ $items->data_seek(0); // Reset the result pointer
             background: #f8f9fa;
             padding: 1.25rem;
             border-radius: 0.5rem;
-            border-left: 4px solid #344767;
+            border-left: 4px solid #000;
         }
         
         .info-label {
@@ -129,7 +130,7 @@ $items->data_seek(0); // Reset the result pointer
         
         .info-value {
             font-size: 1rem;
-            color: #344767;
+            color: #000;
             font-weight: 500;
         }
         
@@ -140,7 +141,7 @@ $items->data_seek(0); // Reset the result pointer
         .section-title {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #344767;
+            color: #000;
             margin-bottom: 1rem;
             padding-bottom: 0.75rem;
             border-bottom: 1px solid #e9ecef;
@@ -316,7 +317,7 @@ $items->data_seek(0); // Reset the result pointer
         .stat-number {
             font-size: 1.5rem;
             font-weight: bold;
-            color: #344767;
+            color: #000;
         }
         
         .stat-label {

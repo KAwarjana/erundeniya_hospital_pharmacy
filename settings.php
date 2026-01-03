@@ -20,9 +20,9 @@ $users = $conn->query("SELECT u.*, r.role_name
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Settings - E. W. D. Erundeniya</title>
+    <title>Erundeniya Hospital Pharmacy</title>
 
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
+    <link rel="shortcut icon" href="assets/images/logof1.png">
     
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -31,6 +31,7 @@ $users = $conn->query("SELECT u.*, r.role_name
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
@@ -69,14 +70,14 @@ $users = $conn->query("SELECT u.*, r.role_name
         }
 
         .nav-tabs .nav-link:hover {
-            color: #344767;
+            color: #000;
             background-color: #f8f9fa;
         }
 
         .nav-tabs .nav-link.active {
-            color: #344767;
+            color: #000;
             background-color: #fff;
-            border-bottom: 2px solid #344767;
+            border-bottom: 2px solid #000;
         }
 
         .form-control, .form-select {
@@ -87,14 +88,14 @@ $users = $conn->query("SELECT u.*, r.role_name
         }
 
         .form-control:focus, .form-select:focus {
-            border-color: #344767;
+            border-color: #000;
             box-shadow: 0 0 0 0.2rem rgba(52, 71, 103, 0.15);
         }
 
         .form-label {
             font-size: 0.875rem;
             font-weight: 500;
-            color: #344767;
+            color: #000;
             margin-bottom: 0.5rem;
         }
 
@@ -107,8 +108,8 @@ $users = $conn->query("SELECT u.*, r.role_name
         }
 
         .btn-primary {
-            background-color: #344767;
-            border-color: #344767;
+            background-color: #000;
+            border-color: #000;
         }
 
         .btn-primary:hover {
@@ -117,8 +118,8 @@ $users = $conn->query("SELECT u.*, r.role_name
         }
 
         .btn-dark {
-            background-color: #344767;
-            border-color: #344767;
+            background-color: #000;
+            border-color: #000;
         }
 
         .btn-dark:hover {
@@ -228,7 +229,7 @@ $users = $conn->query("SELECT u.*, r.role_name
 
         .modal-title {
             font-weight: 600;
-            color: #344767;
+            color: #000;
         }
 
         .modal-body {

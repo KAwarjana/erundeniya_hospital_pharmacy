@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 
 $query = $_GET['q'] ?? '';
 
-if (strlen($query) < 1) { // Changed from 2 to 1 to search from first character
+if (strlen($query) < 1) {
     echo json_encode([]);
     exit;
 }
@@ -18,11 +18,13 @@ $conn = getDBConnection();
 $searchQuery = "%" . $conn->real_escape_string($query) . "%";
 $exactQuery = $conn->real_escape_string($query);
 
-// Modified SQL to include product_id search
+// Modified SQL to use display_id instead of product_id
 $sql = "SELECT 
             p.product_id,
             p.product_name,
             p.generic_name,
+            p.display_id,
+            p.unit,
             pb.batch_id,
             pb.batch_no,
             pb.expiry_date,
@@ -33,14 +35,14 @@ $sql = "SELECT
         WHERE (
             p.product_name LIKE ? 
             OR p.generic_name LIKE ?
-            OR p.product_id = ?
-            OR CAST(p.product_id AS CHAR) LIKE ?
+            OR p.display_id = ?
+            OR CAST(p.display_id AS CHAR) LIKE ?
         )
         AND pb.quantity_in_stock > 0
         AND pb.expiry_date > CURDATE()
         ORDER BY 
             CASE 
-                WHEN p.product_id = ? THEN 1
+                WHEN p.display_id = ? THEN 1
                 WHEN p.product_name LIKE ? THEN 2
                 ELSE 3
             END,

@@ -96,12 +96,16 @@ try {
             $quantityInKg = $quantity / 1000;
         } elseif ($unit === 'bottle') {
             $quantityInKg = $quantity; // Assume 1 bottle = 1 kg
+        } elseif ($unit === 'pills') {
+            $quantityInKg = $quantity; // 1 pill = 1 unit in stock (direct 1:1 mapping)
         }
         
         // Calculate unit price based on unit
         $unitPrice = $pricePerKg;
         if ($unit === 'g' || $unit === 'ml') {
             $unitPrice = $pricePerKg / 1000;
+        } elseif ($unit === 'pills') {
+            $unitPrice = $pricePerKg; // Price per pill is stored directly
         }
         
         $totalPrice = $quantity * $unitPrice;
@@ -132,7 +136,7 @@ try {
             throw new Exception("Failed to add sale item: " . $stmtItem->error);
         }
         
-        // Update stock (deduct in kg)
+        // Update stock (deduct based on calculated quantity)
         $stmtStock->bind_param("di", $quantityInKg, $batchId);
         
         if (!$stmtStock->execute()) {

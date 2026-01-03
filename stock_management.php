@@ -1,5 +1,6 @@
 <?php
 require_once 'auth.php';
+require_once 'includes/pagination_helper.php'; // Add this line
 Auth::requireAuth();
 
 $conn = getDBConnection();
@@ -9,7 +10,69 @@ $statusFilter = $_GET['status_filter'] ?? '';
 $searchTerm = $_GET['search'] ?? '';
 $expiryFilter = $_GET['expiry_filter'] ?? '';
 
-// Build the query with filters
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
+// Build count query
+$countSql = "SELECT COUNT(*) as total FROM product_batches pb
+JOIN products p ON pb.product_id = p.product_id
+WHERE 1=1";
+
+$params = [];
+$types = "";
+
+// Search filter
+if (!empty($searchTerm)) {
+    if (is_numeric($searchTerm)) {
+        $countSql .= " AND (pb.display_id = ? OR p.product_name LIKE ? OR p.generic_name LIKE ? OR pb.batch_no LIKE ? OR p.product_id LIKE ?)";
+        $params[] = $searchTerm;
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $types .= "issss";
+    } else {
+        $countSql .= " AND (p.product_name LIKE ? OR p.generic_name LIKE ? OR pb.batch_no LIKE ? OR p.product_id LIKE ?)";
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $params[] = "%$searchTerm%";
+        $types .= "ssss";
+    }
+}
+
+// Status filter
+if ($statusFilter === 'out_of_stock') {
+    $countSql .= " AND pb.quantity_in_stock = 0";
+} elseif ($statusFilter === 'low_stock') {
+    $countSql .= " AND pb.quantity_in_stock > 0 AND pb.quantity_in_stock <= 10";
+} elseif ($statusFilter === 'in_stock') {
+    $countSql .= " AND pb.quantity_in_stock > 10";
+}
+
+// Expiry filter
+if ($expiryFilter === 'expired') {
+    $countSql .= " AND pb.expiry_date < CURDATE()";
+} elseif ($expiryFilter === 'expiring_soon') {
+    $countSql .= " AND pb.expiry_date >= CURDATE() AND DATEDIFF(pb.expiry_date, CURDATE()) <= 30";
+} elseif ($expiryFilter === 'near_expiry') {
+    $countSql .= " AND pb.expiry_date >= CURDATE() AND DATEDIFF(pb.expiry_date, CURDATE()) BETWEEN 31 AND 90";
+} elseif ($expiryFilter === 'good') {
+    $countSql .= " AND pb.expiry_date >= CURDATE() AND DATEDIFF(pb.expiry_date, CURDATE()) > 90";
+}
+
+$countStmt = $conn->prepare($countSql);
+if (!empty($params)) {
+    $countStmt->bind_param($types, ...$params);
+}
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with filters and pagination
 $sql = "SELECT 
     pb.batch_id,
     pb.display_id,
@@ -28,31 +91,15 @@ FROM product_batches pb
 JOIN products p ON pb.product_id = p.product_id
 WHERE 1=1";
 
-$params = [];
-$types = "";
-
-// Search filter - updated to include display_id
+// Add same filters as count query
 if (!empty($searchTerm)) {
-    // Check if search term is a number (display_id)
     if (is_numeric($searchTerm)) {
         $sql .= " AND (pb.display_id = ? OR p.product_name LIKE ? OR p.generic_name LIKE ? OR pb.batch_no LIKE ? OR p.product_id LIKE ?)";
-        $params[] = $searchTerm;
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $types .= "issss";
     } else {
         $sql .= " AND (p.product_name LIKE ? OR p.generic_name LIKE ? OR pb.batch_no LIKE ? OR p.product_id LIKE ?)";
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $params[] = "%$searchTerm%";
-        $types .= "ssss";
     }
 }
 
-// Status filter
 if ($statusFilter === 'out_of_stock') {
     $sql .= " AND pb.quantity_in_stock = 0";
 } elseif ($statusFilter === 'low_stock') {
@@ -61,7 +108,6 @@ if ($statusFilter === 'out_of_stock') {
     $sql .= " AND pb.quantity_in_stock > 10";
 }
 
-// Expiry filter
 if ($expiryFilter === 'expired') {
     $sql .= " AND pb.expiry_date < CURDATE()";
 } elseif ($expiryFilter === 'expiring_soon') {
@@ -72,7 +118,12 @@ if ($expiryFilter === 'expired') {
     $sql .= " AND pb.expiry_date >= CURDATE() AND DATEDIFF(pb.expiry_date, CURDATE()) > 90";
 }
 
-$sql .= " ORDER BY pb.display_id ASC, p.product_name, pb.expiry_date";
+$sql .= " ORDER BY pb.display_id ASC, p.product_name, pb.expiry_date LIMIT ? OFFSET ?";
+
+// Add limit and offset to params
+$params[] = $pagination['limit'];
+$params[] = $pagination['offset'];
+$types .= "ii";
 
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
@@ -81,7 +132,10 @@ if (!empty($params)) {
 $stmt->execute();
 $batches = $stmt->get_result();
 
-// Get stock summary statistics
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
+
+// Get summary statistics (same as before)
 $totalProducts = $conn->query("SELECT COUNT(DISTINCT pb.product_id) as total FROM product_batches pb")->fetch_assoc()['total'];
 $totalBatches = $conn->query("SELECT COUNT(*) as total FROM product_batches pb")->fetch_assoc()['total'];
 $totalStockValue = $conn->query("SELECT SUM(pb.quantity_in_stock * pb.cost_price) as total FROM product_batches pb")->fetch_assoc()['total'];
@@ -98,10 +152,10 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Stock Management - E. W. D. Erundeniya</title>
+    <title>Erundeniya Hospital Pharmacy</title>
 
-    <link rel="shortcut icon" href="assets/images/logoblack.png">
-    
+    <link rel="shortcut icon" href="assets/images/logof1.png">
+
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
@@ -109,6 +163,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.css">
 
     <style>
@@ -144,22 +199,24 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
             padding: 1.5rem;
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border: 1px solid #e9ecef;
             border-radius: 0.5rem;
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: #344767;
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #000;
             box-shadow: 0 0 0 0.2rem rgba(52, 71, 103, 0.15);
         }
 
         .form-label {
             font-size: 0.875rem;
             font-weight: 500;
-            color: #344767;
+            color: #000;
             margin-bottom: 0.5rem;
         }
 
@@ -175,8 +232,8 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
         }
 
         .btn-primary {
-            background-color: #344767;
-            border-color: #344767;
+            background-color: #000;
+            border-color: #000;
         }
 
         .btn-primary:hover {
@@ -385,6 +442,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
             0% {
                 transform: rotate(0deg);
             }
+
             100% {
                 transform: rotate(360deg);
             }
@@ -418,7 +476,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
 
         .modal-title {
             font-weight: 600;
-            color: #344767;
+            color: #000;
         }
 
         .modal-body {
@@ -435,7 +493,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
             -webkit-overflow-scrolling: touch;
         }
 
-        
+
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -741,6 +799,298 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
         .filter-card .card-body {
             padding: 1.5rem;
         }
+
+        /* ============================================
+   SEARCH BAR ICON POSITIONING FIX
+   ============================================ */
+
+        /* Fix for search icon positioning in input groups */
+        .input-group .input-group-text {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 40px !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+
+        .input-group .input-group-text .material-symbols-rounded {
+            font-size: 20px !important;
+            line-height: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Ensure search icon is visible */
+        .input-group-text i,
+        .input-group-text .material-symbols-rounded {
+            color: #6c757d !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* ============================================
+   SEARCH FORM ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix search form row alignment */
+        .search-form .row.g-3,
+        form[method="GET"] .row.g-3 {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
+            margin-left: -0.5rem !important;
+            margin-right: -0.5rem !important;
+        }
+
+        .search-form .col-md-3,
+        form[method="GET"] .col-md-3 {
+            display: flex !important;
+            flex-direction: column !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-bottom: 0 !important;
+        }
+
+        .search-form .col-md-3 {
+            flex: 1 1 auto !important;
+        }
+
+        /* Last column with buttons */
+        .search-form .col-md-3:last-child,
+        form[method="GET"] .col-md-3:last-child {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: fit-content !important;
+        }
+
+        /* ============================================
+   ACTION BUTTONS ALIGNMENT FIX
+   ============================================ */
+
+        /* Keep action buttons in same row */
+        .table td.align-middle.text-center {
+            white-space: nowrap !important;
+            padding: 1rem 0.5rem !important;
+        }
+
+        .table .btn-group {
+            display: inline-flex !important;
+            gap: 0.25rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .table .btn-icon {
+            flex-shrink: 0 !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* ============================================
+   FILTER/SEARCH BUTTONS ALIGNMENT
+   ============================================ */
+
+        /* Ensure filter buttons stay horizontal */
+        .col-md-3.d-flex.align-items-end.gap-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: flex-end !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+            justify-content: flex-start !important;
+        }
+
+        .col-md-3.d-flex.align-items-end.gap-2 .btn {
+            flex-shrink: 0 !important;
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+            flex: 0 0 auto !important;
+        }
+
+        /* Match button height with inputs */
+        form .row .btn-sm {
+            height: calc(1.5em + 1rem + 2px) !important;
+            padding: 0.5rem 1rem !important;
+            font-size: 0.8125rem !important;
+            line-height: 1.5 !important;
+        }
+
+        /* Remove any extra margin from buttons in forms */
+        .filter-card .btn {
+            margin-top: 0 !important;
+        }
+
+        /* ============================================
+   HEADER TITLE ALIGNMENT FIX
+   ============================================ */
+
+        /* Fix "Product Batches X batches found" alignment */
+        .card-header.pb-0.card-header-responsive>div:first-child {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: baseline !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .card-header.pb-0.card-header-responsive h6 {
+            margin-bottom: 0 !important;
+            white-space: nowrap !important;
+        }
+
+        .card-header.pb-0.card-header-responsive p.text-sm.mb-0 {
+            margin-bottom: 0 !important;
+            margin-top: 0 !important;
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.25rem !important;
+        }
+
+        /* ============================================
+   RESPONSIVE FIXES
+   ============================================ */
+
+        @media (max-width: 767px) {
+
+            /* Stack elements on mobile */
+            .search-form .row.g-3,
+            form[method="GET"] .row.g-3 {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+
+            .search-form .col-md-3,
+            form[method="GET"] .col-md-3 {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .col-md-3.d-flex.align-items-end.gap-2 {
+                flex-direction: column !important;
+                width: 100% !important;
+            }
+
+            .col-md-3.d-flex.align-items-end.gap-2 .btn {
+                width: 100% !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+
+            /* Maintain horizontal layout on desktop */
+            .search-form .col-md-3,
+            form[method="GET"] .col-md-3 {
+                flex: 0 0 25% !important;
+                max-width: 25% !important;
+            }
+
+            .search-form .col-md-3:last-child,
+            form[method="GET"] .col-md-3:last-child {
+                flex: 0 0 auto !important;
+                width: auto !important;
+            }
+        }
+
+        /* ============================================
+   TABLE CELL CONTENT ALIGNMENT
+   ============================================ */
+
+        /* Center align content in table cells */
+        .table tbody td {
+            vertical-align: middle !important;
+        }
+
+        /* Ensure text doesn't wrap unnecessarily */
+        .table tbody td .text-sm {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 200px !important;
+        }
+
+        /* Status badges alignment */
+        .table .status-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            padding: 4px 12px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+        }
+
+        /* ============================================
+   INPUT GROUP SPECIFIC FIXES
+   ============================================ */
+
+        /* Fix input group with search icon */
+        .input-group {
+            display: flex !important;
+            align-items: stretch !important;
+            width: 100% !important;
+        }
+
+        .input-group .form-control {
+            flex: 1 1 auto !important;
+            border-left: 1px solid #e9ecef !important;
+        }
+
+        .input-group .form-control:focus {
+            border-left: 1px solid #000 !important;
+        }
+
+        /* Ensure proper border radius */
+        .input-group .input-group-text:first-child {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+
+        .input-group .form-control:not(:first-child):not(:last-child) {
+            border-radius: 0 !important;
+        }
+
+        .input-group .form-control:last-child {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
+
+        /* Status badge colors */
+        .status-badge.status-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-badge.status-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .status-badge.status-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .status-badge.status-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .status-badge.status-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .status-badge.status-info {
+            background-color: #17a2b8;
+            color: white;
+        }
     </style>
 </head>
 
@@ -912,9 +1262,9 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
                         <div class="card-header pb-0 card-header-responsive">
                             <div>
                                 <h6>Product Batches</h6>
-                                <p class="text-sm mb-0">
+                                <p class="text-sm mb-1">
                                     <i class="fa fa-check text-info" aria-hidden="true"></i>
-                                    <span class="font-weight-bold ms-1"><?php echo $batches->num_rows; ?></span> batches found
+                                    (<span class="font-weight-bold ms-1"><?php echo $batches->num_rows; ?></span> batches found&nbsp;)
                                 </p>
                             </div>
                             <div>
@@ -957,7 +1307,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
                                     </select>
                                 </div>
                                 <div class="col-md-3 d-flex align-items-end gap-2">
-                                    <button type="submit" class="btn btn-primary btn-sm">
+                                    <button type="submit" class="btn btn-success btn-sm">
                                         <i class="material-symbols-rounded me-1" style="font-size: 16px;">filter_alt</i>
                                         Filter
                                     </button>
@@ -1032,7 +1382,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
                                                 </td>
                                                 <td class="align-middle text-center">
                                                     <span class="text-sm font-weight-bold">
-                                                        <?php 
+                                                        <?php
                                                         if ($batch['cost_price'] === null || $batch['cost_price'] == 0) {
                                                             echo '<span style="color: #999; font-style: italic;">N/A</span>';
                                                         } else {
@@ -1068,6 +1418,23 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
                                     </tbody>
                                 </table>
                             </div>
+                            <!-- <p class="text-sm mb-1">
+                                <i class="fa fa-check text-info" aria-hidden="true"></i>
+                                (<span class="font-weight-bold ms-1"><?php echo getPaginationInfo($pagination, $batches->num_rows); ?></span>)
+                            </p> -->
+
+                            <!-- After closing </table> tag, add: -->
+                            <?php if ($batches->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $batches->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1221,11 +1588,11 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -1424,7 +1791,7 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
                 });
         }
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================
@@ -1583,4 +1950,5 @@ $products = $conn->query("SELECT product_id, product_name, generic_name FROM pro
         }
     </script>
 </body>
+
 </html>

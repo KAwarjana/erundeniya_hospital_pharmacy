@@ -1,5 +1,6 @@
 <?php
 require_once 'auth.php';
+require_once 'includes/pagination_helper.php'; // Add this line
 Auth::requireAuth();
 
 $conn = getDBConnection();
@@ -7,7 +8,40 @@ $conn = getDBConnection();
 // Get search parameter
 $searchTerm = $_GET['search'] ?? '';
 
-// Build query with search
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
+// Build count query
+$countSql = "SELECT COUNT(*) as total FROM customers c";
+
+if (!empty($searchTerm)) {
+    if (is_numeric($searchTerm)) {
+        $countSql .= " WHERE c.display_id = ? OR c.name LIKE ? OR c.contact_no LIKE ?";
+    } else {
+        $countSql .= " WHERE c.name LIKE ? OR c.contact_no LIKE ?";
+    }
+}
+
+$countStmt = $conn->prepare($countSql);
+
+if (!empty($searchTerm)) {
+    if (is_numeric($searchTerm)) {
+        $searchParam = "%$searchTerm%";
+        $countStmt->bind_param("iss", $searchTerm, $searchParam, $searchParam);
+    } else {
+        $searchParam = "%$searchTerm%";
+        $countStmt->bind_param("ss", $searchParam, $searchParam);
+    }
+}
+
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with pagination
 $sql = "SELECT c.*, LPAD(c.display_id, 2, '0') as formatted_display_id, COUNT(DISTINCT s.sale_id) as total_sales,
     COALESCE(SUM(s.net_amount), 0) as total_spent
 FROM customers c
@@ -21,22 +55,27 @@ if (!empty($searchTerm)) {
     }
 }
 
-$sql .= " GROUP BY c.customer_id ORDER BY c.display_id ASC";
+$sql .= " GROUP BY c.customer_id ORDER BY c.display_id ASC LIMIT ? OFFSET ?";
 
 $stmt = $conn->prepare($sql);
 
 if (!empty($searchTerm)) {
     if (is_numeric($searchTerm)) {
         $searchParam = "%$searchTerm%";
-        $stmt->bind_param("iss", $searchTerm, $searchParam, $searchParam);
+        $stmt->bind_param("issii", $searchTerm, $searchParam, $searchParam, $pagination['limit'], $pagination['offset']);
     } else {
         $searchParam = "%$searchTerm%";
-        $stmt->bind_param("ss", $searchParam, $searchParam);
+        $stmt->bind_param("ssii", $searchParam, $searchParam, $pagination['limit'], $pagination['offset']);
     }
+} else {
+    $stmt->bind_param("ii", $pagination['limit'], $pagination['offset']);
 }
 
 $stmt->execute();
 $customers = $stmt->get_result();
+
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,9 +83,9 @@ $customers = $stmt->get_result();
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Customers - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -58,586 +97,589 @@ $customers = $stmt->get_result();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.10.5/sweetalert2.min.css">
 
     <style>
-    /* Import all dashboard styles */
-    .main-content {
-        margin-left: 15rem;
-        transition: margin-left 0.3s ease;
-        min-height: 100vh;
-        margin-top: 0 !important;
-        padding-top: 1rem !important;
-        position: relative;
-        z-index: 1;
-    }
-
-    #navbarBlur {
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-    }
-
-    .container-fluid.py-2.mt-2 {
-        padding-top: 0.5rem !important;
-        margin-top: 0 !important;
-    }
-
-    .col-12 h3 {
-        margin-top: 0 !important;
-        margin-bottom: 0.5rem !important;
-    }
-
-    .col-12 p {
-        margin-top: 0 !important;
-        margin-bottom: 1rem !important;
-    }
-
-    nav[aria-label="breadcrumb"] {
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
-    }
-
-    .breadcrumb {
-        margin-bottom: 0 !important;
-    }
-
-    .card-header {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-    }
-
-    .sidenav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        width: 17.125rem;
-        z-index: 1040;
-        background: white;
-        transform: translateX(0) !important;
-        transition: transform 0.3s ease;
-    }
-
-    .navbar-main {
-        position: relative;
-        z-index: 1050 !important;
-    }
-
-    .dashboard-header {
-        padding-left: 2rem !important;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
-
-    .dashboard-header h3 {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        margin-bottom: 0.25rem !important;
-    }
-
-    .dashboard-header p {
-        margin-top: 0 !important;
-        margin-bottom: 1rem !important;
-    }
-
-    @media (max-width: 1199.98px) {
-        .sidenav {
-            transform: translateX(-100%) !important;
-        }
-
-        .sidenav.show {
-            transform: translateX(0) !important;
-        }
-
+        /* Import all dashboard styles */
         .main-content {
-            margin-left: 0 !important;
+            margin-left: 15rem;
+            transition: margin-left 0.3s ease;
+            min-height: 100vh;
+            margin-top: 0 !important;
+            padding-top: 1rem !important;
+            position: relative;
+            z-index: 1;
+        }
+
+        #navbarBlur {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .container-fluid.py-2.mt-2 {
+            padding-top: 0.5rem !important;
+            margin-top: 0 !important;
+        }
+
+        .col-12 h3 {
+            margin-top: 0 !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        .col-12 p {
+            margin-top: 0 !important;
+            margin-bottom: 1rem !important;
+        }
+
+        nav[aria-label="breadcrumb"] {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        .breadcrumb {
+            margin-bottom: 0 !important;
+        }
+
+        .card-header {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        .sidenav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 17.125rem;
+            z-index: 1040;
+            background: white;
+            transform: translateX(0) !important;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-main {
+            position: relative;
+            z-index: 1050 !important;
         }
 
         .dashboard-header {
-            padding-left: 1rem !important;
+            padding-left: 2rem !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
-    }
 
-    .sidebar-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1039;
-        display: none;
-    }
+        .dashboard-header h3 {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            margin-bottom: 0.25rem !important;
+        }
 
-    .sidebar-backdrop.show {
-        display: block;
-    }
+        .dashboard-header p {
+            margin-top: 0 !important;
+            margin-bottom: 1rem !important;
+        }
 
-    .mobile-toggle {
-        display: none;
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 1050;
-        background: #42424a;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5rem;
-        cursor: pointer;
-    }
+        @media (max-width: 1199.98px) {
+            .sidenav {
+                transform: translateX(-100%) !important;
+            }
 
-    @media (max-width: 1199.98px) {
-        .mobile-toggle {
+            .sidenav.show {
+                transform: translateX(0) !important;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+            }
+
+            .dashboard-header {
+                padding-left: 1rem !important;
+            }
+        }
+
+        .sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1039;
+            display: none;
+        }
+
+        .sidebar-backdrop.show {
             display: block;
         }
-    }
 
-    .navbar .dropdown-menu {
-        position: absolute;
-        z-index: 1060 !important;
-        box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15);
-    }
-
-    .navbar {
-        z-index: 1050 !important;
-    }
-
-    .mobile-table {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .card-header-responsive {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-
-    .material-symbols-rounded {
-        vertical-align: middle !important;
-        font-size: 20px;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-
-    .breadcrumb {
-        display: flex !important;
-        align-items: center !important;
-        margin-bottom: 0 !important;
-    }
-
-    .breadcrumb-item {
-        display: flex !important;
-        align-items: center !important;
-    }
-
-    .breadcrumb-item a {
-        display: flex !important;
-        align-items: center !important;
-    }
-
-    .footer {
-        margin-top: auto !important;
-        padding-top: 2rem !important;
-        padding-bottom: 1rem !important;
-    }
-
-    #loading {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: white;
-        z-index: 9999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .simple-loader {
-        width: 50px;
-        height: 50px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #42424a;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Search bar styling */
-    .search-wrapper {
-        margin-bottom: 1.5rem;
-    }
-
-    .input-group-text {
-        background-color: white;
-        border-right: 0;
-    }
-
-    .form-control {
-        border-left: 0;
-    }
-
-    .form-control:focus {
-        box-shadow: none;
-        border-color: #d2d6da;
-    }
-
-    /* Action buttons */
-    .btn-icon {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-icon svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    /* Mobile responsive */
-    @media (max-width: 576px) {
-        .dashboard-header h3 {
-            font-size: 1.25rem;
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1050;
+            background: #42424a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem;
+            cursor: pointer;
         }
 
-        .card-header-responsive {
-            flex-direction: column;
-            align-items: stretch;
+        @media (max-width: 1199.98px) {
+            .mobile-toggle {
+                display: block;
+            }
         }
 
-        .card-header-responsive .btn {
-            width: 100%;
+        .navbar .dropdown-menu {
+            position: absolute;
+            z-index: 1060 !important;
+            box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15);
+        }
+
+        .navbar {
+            z-index: 1050 !important;
         }
 
         .mobile-table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .card-header-responsive {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .material-symbols-rounded {
+            vertical-align: middle !important;
+            font-size: 20px;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .breadcrumb {
+            display: flex !important;
+            align-items: center !important;
+            margin-bottom: 0 !important;
+        }
+
+        .breadcrumb-item {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .breadcrumb-item a {
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .footer {
+            margin-top: auto !important;
+            padding-top: 2rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .simple-loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #42424a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Search bar styling */
+        .search-wrapper {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group-text {
+            background-color: white;
+            border-right: 0;
+        }
+
+        .form-control {
+            border-left: 0;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #d2d6da;
+        }
+
+        /* Action buttons */
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 576px) {
+            .dashboard-header h3 {
+                font-size: 1.25rem;
+            }
+
+            .card-header-responsive {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .card-header-responsive .btn {
+                width: 100%;
+            }
+
+            .mobile-table {
+                font-size: 0.875rem;
+            }
+
+            .btn-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+
+        /* Modal Styling */
+        .modal-content {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+        }
+
+        /* Material Input Groups */
+        .input-group-outline {
+            position: relative;
+            background-color: transparent;
+            border-radius: 0.375rem;
+            border: 1px solid #d2d6da;
+            transition: border-color 0.15s ease-in-out;
+        }
+
+        .input-group-outline:focus-within {
+            border-color: #0cb41aff;
+        }
+
+        .input-group-outline .form-label {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.75rem;
+            padding: 0 0.25rem;
+            background-color: white;
+            color: #7b809a;
             font-size: 0.875rem;
+            transition: all 0.2s ease-in-out;
+            pointer-events: none;
+            z-index: 1;
         }
 
+        .input-group-outline .form-control {
+            border: none;
+            background-color: transparent;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            color: #495057;
+            height: auto;
+        }
+
+        .input-group-outline .form-control:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .input-group-outline textarea.form-control {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Active/Filled state */
+        .input-group-outline.is-focused .form-label,
+        .input-group-outline.is-filled .form-label {
+            top: -0.5rem;
+            font-size: 0.75rem;
+            color: #e91e63;
+        }
+
+        /* Number input styling */
+        .input-group-outline input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .input-group-outline input[type="number"]::-webkit-outer-spin-button,
+        .input-group-outline input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #dee2e6;
+            padding: 1.5rem;
+            background-color: #0f1a0fff;
+        }
+
+        .modal-header .modal-title {
+            color: #f8fffbff !important;
+            font-size: 1.25rem;
+        }
+
+        .input-group {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group-text {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-right: none;
+            color: #6c757d;
+        }
+
+        .form-control {
+            border: 1px solid #dee2e6;
+            border-radius: 0.75rem !important;
+            padding-left: 0.5rem;
+        }
+
+        .form-control:focus {
+            border-color: #49a3f1;
+            box-shadow: 0 0 0 0.2rem rgba(73, 163, 241, 0.25);
+            padding-left: 0.5rem;
+        }
+
+        /* Dashboard-style modal - RESPONSIVE */
+        .modal-content {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ALIGNMENT FIXES */
+        /* Fix table cell alignment for customer name and contact */
+        .table tbody tr td {
+            vertical-align: middle !important;
+        }
+
+        .table tbody tr td p {
+            margin-bottom: 0 !important;
+            line-height: 1.5;
+        }
+
+        /* Fix search icon border alignment */
+        .search-wrapper .input-group-outline .input-group-text {
+            border-right: 1px solid #dee2e6 !important;
+            border-radius: 0.75rem 0 0 0.75rem !important;
+        }
+
+        .search-wrapper .input-group-outline .form-control {
+            border-left: none !important;
+            border-radius: 0 0.75rem 0.75rem 0 !important;
+        }
+
+        /* Fix clear button text centering */
+        .search-wrapper .btn {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+
+        /* Fix action buttons styling and alignment */
         .btn-icon {
-            width: 28px;
-            height: 28px;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 6px !important;
+            transition: all 0.2s ease !important;
         }
-    }
 
-    /* Modal Styling */
-    .modal-content {
-        border-radius: 1rem;
-        border: none;
-        box-shadow: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
-    }
-
-    .modal-body {
-        padding: 1.5rem;
-    }
-
-    .modal-footer {
-        border-top: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-    }
-
-    /* Material Input Groups */
-    .input-group-outline {
-        position: relative;
-        background-color: transparent;
-        border-radius: 0.375rem;
-        border: 1px solid #d2d6da;
-        transition: border-color 0.15s ease-in-out;
-    }
-
-    .input-group-outline:focus-within {
-        border-color: #0cb41aff;
-    }
-
-    .input-group-outline .form-label {
-        position: absolute;
-        top: 0.5rem;
-        left: 0.75rem;
-        padding: 0 0.25rem;
-        background-color: white;
-        color: #7b809a;
-        font-size: 0.875rem;
-        transition: all 0.2s ease-in-out;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    .input-group-outline .form-control {
-        border: none;
-        background-color: transparent;
-        padding: 0.75rem;
-        font-size: 0.875rem;
-        color: #495057;
-        height: auto;
-    }
-
-    .input-group-outline .form-control:focus {
-        box-shadow: none;
-        outline: none;
-    }
-
-    .input-group-outline textarea.form-control {
-        min-height: 80px;
-        resize: vertical;
-    }
-
-    /* Active/Filled state */
-    .input-group-outline.is-focused .form-label,
-    .input-group-outline.is-filled .form-label {
-        top: -0.5rem;
-        font-size: 0.75rem;
-        color: #e91e63;
-    }
-
-    /* Number input styling */
-    .input-group-outline input[type="number"] {
-        -moz-appearance: textfield;
-    }
-
-    .input-group-outline input[type="number"]::-webkit-outer-spin-button,
-    .input-group-outline input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-
-    .modal-header {
-        border-bottom: 1px solid #dee2e6;
-        padding: 1.5rem;
-        background-color: #0f1a0fff;
-    }
-
-    .modal-header .modal-title {
-        color: #f8fffbff !important;
-        font-size: 1.25rem;
-    }
-
-    .input-group {
-        border-radius: 0.75rem;
-        overflow: hidden;
-        box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    .input-group-text {
-        background: white;
-        border: 1px solid #dee2e6;
-        border-right: none;
-        color: #6c757d;
-    }
-
-    .form-control {
-        border: 1px solid #dee2e6;
-        border-radius: 0.75rem !important;
-        padding-left: 0.5rem;
-    }
-
-    .form-control:focus {
-        border-color: #49a3f1;
-        box-shadow: 0 0 0 0.2rem rgba(73, 163, 241, 0.25);
-        padding-left: 0.5rem;
-    }
-
-    /* Dashboard-style modal - RESPONSIVE */
-    .modal-content {
-        border-radius: 1rem;
-        border: none;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-
-    /* ALIGNMENT FIXES */
-    /* Fix table cell alignment for customer name and contact */
-    .table tbody tr td {
-        vertical-align: middle !important;
-    }
-
-    .table tbody tr td p {
-        margin-bottom: 0 !important;
-        line-height: 1.5;
-    }
-
-    /* Fix search icon border alignment */
-    .search-wrapper .input-group-outline .input-group-text {
-        border-right: 1px solid #dee2e6 !important;
-        border-radius: 0.75rem 0 0 0.75rem !important;
-    }
-
-    .search-wrapper .input-group-outline .form-control {
-        border-left: none !important;
-        border-radius: 0 0.75rem 0.75rem 0 !important;
-    }
-
-    /* Fix clear button text centering */
-    .search-wrapper .btn {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
-    }
-
-    /* Fix action buttons styling and alignment */
-    .btn-icon {
-        width: 32px !important;
-        height: 32px !important;
-        padding: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        border-radius: 6px !important;
-        transition: all 0.2s ease !important;
-    }
-
-    .btn-icon:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .btn-icon .material-symbols-rounded {
-        font-size: 18px !important;
-        line-height: 1 !important;
-    }
-
-    /* Ensure proper spacing in action buttons cell */
-    td.align-middle.text-center .btn {
-        margin: 0 2px !important;
-    }
-
-    /* Mobile responsive fixes for action buttons */
-    @media (max-width: 576px) {
-        .btn-icon {
-            width: 28px !important;
-            height: 28px !important;
+        .btn-icon:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
-        .btn-icon .material-symbols-rounded {
-            font-size: 16px !important;
-        }
-    }
 
-    /* NEW IMPROVEMENTS */
-    /* Move search icon slightly to the left */
-    .search-wrapper .input-group-outline .input-group-text {
-        padding-right: 8px !important;
-        padding-left: 12px !important;
-    }
-
-    .search-wrapper .input-group-outline .form-control {
-        padding-left: 8px !important;
-    }
-
-    /* BEAUTIFUL ACTION BUTTONS WITH SEPARATE BORDERS */
-    .btn-icon {
-        width: 40px !important;
-        height: 40px !important;
-        margin: 0 4px !important;
-        border: 2px solid !important;
-        border-radius: 8px !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        position: relative !important;
-        overflow: hidden !important;
-    }
-
-    /* Edit button - Warning theme with border */
-    .btn-icon.text-warning {
-        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
-        border-color: #ffb74d !important;
-        color: #e65100 !important;
-    }
-
-    .btn-icon.text-warning:hover {
-        background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%) !important;
-        border-color: #ff9800 !important;
-        color: #bf360c !important;
-        transform: translateY(-2px) scale(1.05) !important;
-        box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3) !important;
-    }
-
-    .btn-icon.text-warning:active {
-        transform: translateY(-1px) scale(1.02) !important;
-    }
-
-    /* Delete button - Danger theme with border */
-    .btn-icon.text-danger {
-        background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
-        border-color: #ef5350 !important;
-        color: #c62828 !important;
-    }
-
-    .btn-icon.text-danger:hover {
-        background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%) !important;
-        border-color: #f44336 !important;
-        color: #b71c1c !important;
-        transform: translateY(-2px) scale(1.05) !important;
-        box-shadow: 0 8px 20px rgba(244, 67, 54, 0.3) !important;
-    }
-
-    .btn-icon.text-danger:active {
-        transform: translateY(-1px) scale(1.02) !important;
-    }
-
-    /* Button shine effect on hover */
-    .btn-icon::before {
-        content: '' !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: -100% !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent) !important;
-        transition: left 0.5s !important;
-    }
-
-    .btn-icon:hover::before {
-        left: 100% !important;
-    }
-
-    /* Button icon sizing */
-    .btn-icon .material-symbols-rounded {
-        font-size: 20px !important;
-        position: relative !important;
-        z-index: 1 !important;
-    }
-
-    /* Action buttons container */
-    td.align-middle.text-center {
-        white-space: nowrap !important;
-    }
-
-    /* Search input focus improvement */
-    .search-wrapper .input-group-outline:focus-within .input-group-text {
-        border-color: #49a3f1 !important;
-        background-color: #f8f9fa !important;
-    }
-
-    /* Mobile responsive for new button sizes */
-    @media (max-width: 576px) {
-        .btn-icon {
-            width: 36px !important;
-            height: 36px !important;
-            margin: 0 2px !important;
-        }
-        
         .btn-icon .material-symbols-rounded {
             font-size: 18px !important;
+            line-height: 1 !important;
         }
-    }
 
-    /* Smooth transitions for all interactive elements */
-    .btn, .form-control, .input-group-text {
-        transition: all 0.3s ease !important;
-    }
-</style>
+        /* Ensure proper spacing in action buttons cell */
+        td.align-middle.text-center .btn {
+            margin: 0 2px !important;
+        }
+
+        /* Mobile responsive fixes for action buttons */
+        @media (max-width: 576px) {
+            .btn-icon {
+                width: 28px !important;
+                height: 28px !important;
+            }
+
+            .btn-icon .material-symbols-rounded {
+                font-size: 16px !important;
+            }
+        }
+
+        /* NEW IMPROVEMENTS */
+        /* Move search icon slightly to the left */
+        .search-wrapper .input-group-outline .input-group-text {
+            padding-right: 8px !important;
+            padding-left: 12px !important;
+        }
+
+        .search-wrapper .input-group-outline .form-control {
+            padding-left: 8px !important;
+        }
+
+        /* BEAUTIFUL ACTION BUTTONS WITH SEPARATE BORDERS */
+        .btn-icon {
+            width: 40px !important;
+            height: 40px !important;
+            margin: 0 4px !important;
+            border: 2px solid !important;
+            border-radius: 8px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        /* Edit button - Warning theme with border */
+        .btn-icon.text-warning {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%) !important;
+            border-color: #ffb74d !important;
+            color: #e65100 !important;
+        }
+
+        .btn-icon.text-warning:hover {
+            background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%) !important;
+            border-color: #ff9800 !important;
+            color: #bf360c !important;
+            transform: translateY(-2px) scale(1.05) !important;
+            box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3) !important;
+        }
+
+        .btn-icon.text-warning:active {
+            transform: translateY(-1px) scale(1.02) !important;
+        }
+
+        /* Delete button - Danger theme with border */
+        .btn-icon.text-danger {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
+            border-color: #ef5350 !important;
+            color: #c62828 !important;
+        }
+
+        .btn-icon.text-danger:hover {
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%) !important;
+            border-color: #f44336 !important;
+            color: #b71c1c !important;
+            transform: translateY(-2px) scale(1.05) !important;
+            box-shadow: 0 8px 20px rgba(244, 67, 54, 0.3) !important;
+        }
+
+        .btn-icon.text-danger:active {
+            transform: translateY(-1px) scale(1.02) !important;
+        }
+
+        /* Button shine effect on hover */
+        .btn-icon::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent) !important;
+            transition: left 0.5s !important;
+        }
+
+        .btn-icon:hover::before {
+            left: 100% !important;
+        }
+
+        /* Button icon sizing */
+        .btn-icon .material-symbols-rounded {
+            font-size: 20px !important;
+            position: relative !important;
+            z-index: 1 !important;
+        }
+
+        /* Action buttons container */
+        td.align-middle.text-center {
+            white-space: nowrap !important;
+        }
+
+        /* Search input focus improvement */
+        .search-wrapper .input-group-outline:focus-within .input-group-text {
+            border-color: #49a3f1 !important;
+            background-color: #f8f9fa !important;
+        }
+
+        /* Mobile responsive for new button sizes */
+        @media (max-width: 576px) {
+            .btn-icon {
+                width: 36px !important;
+                height: 36px !important;
+                margin: 0 2px !important;
+            }
+
+            .btn-icon .material-symbols-rounded {
+                font-size: 18px !important;
+            }
+        }
+
+        /* Smooth transitions for all interactive elements */
+        .btn,
+        .form-control,
+        .input-group-text {
+            transition: all 0.3s ease !important;
+        }
+    </style>
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
@@ -679,8 +721,8 @@ $customers = $stmt->get_result();
                                     <i class="material-symbols-rounded text-sm">download</i>
                                     Export CSV
                                 </button>
-                                <button class="btn btn-sm btn-primary" onclick="showAddCustomerModal()">
-                                    <i class="material-symbols-rounded text-sm">add</i>
+                                <button class="btn btn-sm btn-primary" style="background-color: #000;" onclick="showAddCustomerModal()">
+                                    <i class="material-symbols-rounded text-sm">add_circle</i>
                                     Add Customer
                                 </button>
                             </div>
@@ -695,13 +737,12 @@ $customers = $stmt->get_result();
                                             <span class="input-group-text">
                                                 <i class="material-symbols-rounded">search</i>
                                             </span>
-                                            <input 
-                                                type="text" 
-                                                class="form-control" 
-                                                name="search" 
+                                            <input
+                                                type="text"
+                                                class="form-control"
+                                                name="search"
                                                 placeholder="Search by ID, name or contact number..."
-                                                value="<?php echo htmlspecialchars($searchTerm); ?>"
-                                            >
+                                                value="<?php echo htmlspecialchars($searchTerm); ?>">
                                         </div>
                                     </div>
                                     <div class="col-md-2 d-flex gap-2">
@@ -757,7 +798,7 @@ $customers = $stmt->get_result();
                                                     <td class="align-middle text-center">
                                                         <span class="text-sm font-weight-bold">Rs. <?php echo number_format($customer['total_spent'], 2); ?></span>
                                                     </td>
-                                                     <td class="align-middle text-center">
+                                                    <td class="align-middle text-center">
                                                         <button class="btn btn-sm btn-icon btn-warning" onclick="editCustomer(<?php echo $customer['customer_id']; ?>)" title="Edit Customer">
                                                             <i class="material-symbols-rounded" style="font-size: 16px;">edit</i>
                                                         </button>
@@ -787,6 +828,17 @@ $customers = $stmt->get_result();
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if ($customers->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $customers->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -814,7 +866,7 @@ $customers = $stmt->get_result();
                         </div>
                         <div class="mb-3">
                             <label for="contactNo" class="form-label">Contact Number *</label>
-                            <input type="tel" class="form-control" id="contactNo" name="contact_no" required>
+                            <input type="tel" class="form-control" id="contactNo" name="contact_no" maxlength="10" required>
                         </div>
                         <div class="mb-3">
                             <label for="address" class="form-label">Address</label>
@@ -866,11 +918,11 @@ $customers = $stmt->get_result();
 
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -914,16 +966,16 @@ $customers = $stmt->get_result();
         // Material input group focus handling
         document.addEventListener('DOMContentLoaded', function() {
             const inputGroups = document.querySelectorAll('.input-group-outline');
-            
+
             inputGroups.forEach(function(group) {
                 const input = group.querySelector('.form-control');
-                
+
                 if (input) {
                     // Focus event
                     input.addEventListener('focus', function() {
                         group.classList.add('is-focused');
                     });
-                    
+
                     // Blur event
                     input.addEventListener('blur', function() {
                         group.classList.remove('is-focused');
@@ -933,7 +985,7 @@ $customers = $stmt->get_result();
                             group.classList.remove('is-filled');
                         }
                     });
-                    
+
                     // Check if already has value
                     if (input.value.trim() !== '') {
                         group.classList.add('is-filled');
@@ -973,12 +1025,12 @@ $customers = $stmt->get_result();
             document.getElementById('customerModalTitle').textContent = 'Add New Customer';
             document.getElementById('customerForm').reset();
             document.getElementById('customerId').value = '';
-            
+
             // Reset input group states
             document.querySelectorAll('.input-group-outline').forEach(function(group) {
                 group.classList.remove('is-focused', 'is-filled');
             });
-            
+
             customerModal.show();
         }
 
@@ -993,7 +1045,7 @@ $customers = $stmt->get_result();
                         document.getElementById('contactNo').value = data.customer.contact_no;
                         document.getElementById('address').value = data.customer.address || '';
                         document.getElementById('creditLimit').value = data.customer.credit_limit;
-                        
+
                         // Update input group states
                         document.querySelectorAll('.input-group-outline').forEach(function(group) {
                             const input = group.querySelector('.form-control');
@@ -1001,7 +1053,7 @@ $customers = $stmt->get_result();
                                 group.classList.add('is-filled');
                             }
                         });
-                        
+
                         customerModal.show();
                     }
                 })

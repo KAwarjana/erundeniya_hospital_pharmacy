@@ -45,9 +45,9 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Profile - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -56,6 +56,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
 
     <!-- CSS Files -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
+    <link href="assets/css/fixes.css" rel="stylesheet" />
 
     <style>
         /* Profile Header - Dashboard Style */
@@ -168,7 +169,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
         }
 
         .info-card h5 {
-            color: #344767;
+            color: #000;
             font-weight: 600;
             margin-bottom: 1.5rem;
         }
@@ -192,7 +193,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
         }
 
         .info-value {
-            color: #344767;
+            color: #000;
             font-weight: 500;
         }
 
@@ -272,8 +273,13 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Material Icons */
@@ -321,7 +327,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
             -webkit-text-fill-color: #000 !important;
             transition: background-color 5000s ease-in-out 0s;
         }
-        
+
         input:-webkit-autofill {
             caret-color: #000;
         }
@@ -342,7 +348,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
             background: linear-gradient(195deg, #66BB6A 0%, #43A047 100%) !important;
         }
 
-        
+
         /* ============================================
    MAIN LAYOUT - Dashboard Style 
    ============================================ */
@@ -648,6 +654,27 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
         .filter-card .card-body {
             padding: 1.5rem;
         }
+
+        .profile--btn1 {
+            background-color: #000 !important;
+            color: #f3f3f3 !important;
+        }
+
+        .profile--btn1:hover {
+            background-color: #ffffffff !important;
+            color: #ffffffff !important;
+        }
+
+        .profile--btn2 {
+            background-color: #ffffffff !important;
+            color: #000000ff !important;
+            border: #000 solid 1px !important;
+        }
+
+        .profile--btn2:hover {
+            background-color: #000 !important;
+            color: #f3f3f3 !important;
+        }
     </style>
 </head>
 
@@ -830,9 +857,9 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
                                 <i class="material-symbols-rounded me-2">edit</i>
                                 Edit Profile
                             </button>
-                            
+
                             <h6 class="text-muted mb-3">Quick Actions</h6>
-                            <a href="pos.php" class="btn btn-outline-primary w-100 mb-2">
+                            <a href="pos.php" class="btn btn-outline-primary w-100 mb-2 profile--btn1">
                                 <i class="material-symbols-rounded me-2">point_of_sale</i>
                                 New Sale
                             </a>
@@ -842,7 +869,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
                                     View Sales History
                                 </button>
                             <?php else: ?>
-                                <a href="sales_history.php" class="btn btn-outline-primary w-100">
+                                <a href="sales_history.php" class="btn btn-outline-primary w-100 profile--btn2">
                                     <i class="material-symbols-rounded me-2">history</i>
                                     View Sales History
                                 </a>
@@ -947,11 +974,11 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
         // Toggle button events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
-        
+
         if (mobileToggle) {
             mobileToggle.addEventListener('click', toggleSidebar);
         }
-        
+
         if (iconNavbarSidenav) {
             iconNavbarSidenav.addEventListener('click', toggleSidebar);
         }
@@ -1066,7 +1093,7 @@ $displayEmail = !empty($user['email']) ? htmlspecialchars($user['email']) : 'N/A
                 });
         }
 
-        
+
         // ============================================
         // PERFECT SCROLLBAR 
         // ============================================

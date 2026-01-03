@@ -1,6 +1,7 @@
 <?php
 require_once 'auth.php';
 Auth::requireAuth();
+require_once 'includes/pagination_helper.php'; // Add this line
 
 $conn = getDBConnection();
 
@@ -9,21 +10,15 @@ $stockStatus = $_GET['stock_status'] ?? '';
 $productStatus = $_GET['product_status'] ?? 'active';
 $searchTerm = $_GET['search'] ?? '';
 
+// Pagination parameters
+$currentPage = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$recordsPerPage = 8;
+
 // Get suppliers for dropdown
 $suppliers = $conn->query("SELECT supplier_id, name FROM suppliers ORDER BY name");
 
-// Build the query with filters
-$sql = "SELECT 
-    p.product_id,
-    p.display_id,
-    LPAD(p.display_id, 2, '0') as formatted_display_id,
-    p.product_name,
-    p.generic_name,
-    p.unit,
-    p.reorder_level,
-    p.status,
-    COALESCE(SUM(pb.quantity_in_stock), 0) as total_stock,
-    COUNT(pb.batch_id) as batch_count
+// First, get total count with filters (without LIMIT)
+$countSql = "SELECT COUNT(DISTINCT p.product_id) as total
 FROM products p
 LEFT JOIN product_batches pb ON p.product_id = pb.product_id";
 
@@ -38,7 +33,6 @@ if ($productStatus !== 'all') {
 }
 
 if (!empty($searchTerm)) {
-    // Search by display_id, product_name, or generic_name
     if (is_numeric($searchTerm)) {
         $whereClauses[] = "(p.display_id = ? OR p.product_name LIKE ? OR p.generic_name LIKE ? OR p.product_id LIKE ?)";
         $params[] = $searchTerm;
@@ -56,6 +50,59 @@ if (!empty($searchTerm)) {
 }
 
 if (!empty($whereClauses)) {
+    $countSql .= " WHERE " . implode(" AND ", $whereClauses);
+}
+
+// Add HAVING clause for stock status filter in count
+$havingClause = "";
+if ($stockStatus === 'out_of_stock') {
+    $havingClause = " HAVING total_stock = 0";
+} elseif ($stockStatus === 'low_stock') {
+    $havingClause = " HAVING total_stock > 0 AND total_stock <= p.reorder_level";
+} elseif ($stockStatus === 'in_stock') {
+    $havingClause = " HAVING total_stock > p.reorder_level";
+}
+
+// For count with HAVING, we need a subquery
+if (!empty($havingClause)) {
+    $countSql = "SELECT COUNT(*) as total FROM (
+        SELECT p.product_id, p.reorder_level, COALESCE(SUM(pb.quantity_in_stock), 0) as total_stock
+        FROM products p
+        LEFT JOIN product_batches pb ON p.product_id = pb.product_id";
+
+    if (!empty($whereClauses)) {
+        $countSql .= " WHERE " . implode(" AND ", $whereClauses);
+    }
+
+    $countSql .= " GROUP BY p.product_id" . $havingClause . ") as filtered_products";
+}
+
+$countStmt = $conn->prepare($countSql);
+if (!empty($params)) {
+    $countStmt->bind_param($types, ...$params);
+}
+$countStmt->execute();
+$totalRecords = $countStmt->get_result()->fetch_assoc()['total'];
+
+// Calculate pagination
+$pagination = calculatePagination($totalRecords, $recordsPerPage, $currentPage);
+
+// Build main query with filters and pagination
+$sql = "SELECT 
+    p.product_id,
+    p.display_id,
+    LPAD(p.display_id, 2, '0') as formatted_display_id,
+    p.product_name,
+    p.generic_name,
+    p.unit,
+    p.reorder_level,
+    p.status,
+    COALESCE(SUM(pb.quantity_in_stock), 0) as total_stock,
+    COUNT(pb.batch_id) as batch_count
+FROM products p
+LEFT JOIN product_batches pb ON p.product_id = pb.product_id";
+
+if (!empty($whereClauses)) {
     $sql .= " WHERE " . implode(" AND ", $whereClauses);
 }
 
@@ -69,14 +116,23 @@ if ($stockStatus === 'out_of_stock') {
     $sql .= " HAVING total_stock > p.reorder_level";
 }
 
-$sql .= " ORDER BY p.display_id ASC";
+$sql .= " ORDER BY p.display_id ASC LIMIT ? OFFSET ?";
 
 $stmt = $conn->prepare($sql);
+
+// Add limit and offset to params
+$params[] = $pagination['limit'];
+$params[] = $pagination['offset'];
+$types .= "ii";
+
 if (!empty($params)) {
     $stmt->bind_param($types, ...$params);
 }
 $stmt->execute();
 $products = $stmt->get_result();
+
+// Build pagination URL
+$paginationUrl = buildPaginationUrl($_GET);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,9 +140,9 @@ $products = $stmt->get_result();
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logoblack.png">
-    <link rel="icon" type="image/png" href="assets/images/logoblack.png">
-    <title>Products - E. W. D. Erundeniya</title>
+    <link rel="apple-touch-icon" sizes="76x76" href="assets/images/logof1.png">
+    <link rel="icon" type="image/png" href="assets/images/logof1.png">
+    <title>Erundeniya Hospital Pharmacy</title>
 
     <!-- Fonts and icons -->
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700,900" />
@@ -94,6 +150,7 @@ $products = $stmt->get_result();
     <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
 
     <!-- CSS Files -->
+    <link href="assets/css/fixes.css" rel="stylesheet" />
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
 
     <style>
@@ -802,16 +859,16 @@ $products = $stmt->get_result();
                                 <h6 class="mb-1">Products List</h6>
                                 <p class="text-sm mb-0">
                                     <i class="fa fa-info-circle text-info" aria-hidden="true"></i>
-                                    <span class="font-weight-bold ms-1"><?php echo $products->num_rows; ?></span> products found
+                                    (<span class="font-weight-bold ms-1"><?php echo $products->num_rows; ?></span> products found&nbsp;)
                                 </p>
                             </div>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-dark mb-0" onclick="exportProducts()">
+                                <button class="btn btn-sm btn-primary mb-0" onclick="exportProducts()">
                                     <i class="material-symbols-rounded me-1">download</i>
                                     Export
                                 </button>
-                                <button class="btn btn-sm btn-primary mb-0" onclick="showAddProductModal()">
-                                    <i class="material-symbols-rounded me-1">add</i>
+                                <button class="btn btn-sm btn-dark mb-0" onclick="showAddProductModal()">
+                                    <i class="material-symbols-rounded me-1">add_circle</i>
                                     Add Product
                                 </button>
                             </div>
@@ -911,7 +968,7 @@ $products = $stmt->get_result();
                                                             <div class="d-flex flex-column justify-content-center">
                                                                 <h6 class="mb-0 text-sm"><?php echo htmlspecialchars($product['product_name']); ?></h6>
                                                                 <?php if (!$isActive): ?>
-                                                                    <span class="badge bg-secondary mt-1">Inactive</span>
+                                                                    <span class="badge bg-danger mt-1">Inactive</span>
                                                                 <?php endif; ?>
                                                             </div>
                                                         </div>
@@ -937,7 +994,7 @@ $products = $stmt->get_result();
                                                         </span>
                                                     </td>
                                                     <td class="align-middle text-center text-sm">
-                                                        <span class="badge bg-<?php echo $isActive ? 'success' : 'secondary'; ?> text-white">
+                                                        <span class="badge bg-<?php echo $isActive ? 'success' : 'danger'; ?> text-white">
                                                             <?php echo $isActive ? 'Active' : 'Inactive'; ?>
                                                         </span>
                                                     </td>
@@ -985,6 +1042,23 @@ $products = $stmt->get_result();
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if ($products->num_rows > 0): ?>
+                                <!-- Pagination Info -->
+                                <div class="pagination-info px-3 mt-3">
+                                    <?php echo getPaginationInfo($pagination, $products->num_rows); ?>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div class="px-3">
+                                    <?php echo generatePagination($pagination['currentPage'], $pagination['totalPages'], $paginationUrl); ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <!-- Update the table info text to show pagination info -->
+                            <!-- <p class="text-sm mb-0">
+                                <i class="fa fa-info-circle text-info" aria-hidden="true"></i>
+                                (<span class="font-weight-bold ms-1"><?php echo getPaginationInfo($pagination, $products->num_rows); ?></span>)
+                            </p> -->
                         </div>
                     </div>
                 </div>
@@ -1147,6 +1221,9 @@ $products = $stmt->get_result();
             </div>
         </div>
     </div>
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Core JS Files -->
     <script src="assets/js/core/popper.min.js"></script>
@@ -1382,8 +1459,7 @@ $products = $stmt->get_result();
             Swal.fire({
                 title: `${actionText} Product?`,
                 text: newStatus === 'inactive' ?
-                    'This product will not appear in POS and new batch additions. Existing stock will remain.' :
-                    'This product will be available again in POS and for new batches.',
+                    'This product will not appear in POS and new batch additions. Existing stock will remain.' : 'This product will be available again in POS and for new batches.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: newStatus === 'active' ? '#28a745' : '#dc3545',
