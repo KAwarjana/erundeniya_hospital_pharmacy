@@ -810,9 +810,9 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                             <div class="card invoice-card">
                                 <div class="card-header">
                                     <div class="invoice-header">
-                                        <h4>E. W. D. එරුන්දෙනිය හෙළ ඔසුසල</h4>
-                                        <p style="margin: 5px 0; font-size: 12px;">A/55 වෙදගෙදර, එරුන්දෙනිය, ආමිතිරිගල, උතුර.</p>
-                                        <p style="margin: 0; font-size: 12px;">Tel: +94 77 936 6908</p>
+                                        <h4>Erundeniya Ayurveda Hospital</h4>
+                                        <p style="margin: 5px 0; font-size: 12px;">A/55 Wedagedara, Erundeniya, Amithirigala, North.</p>
+                                        <p style="margin: 0; font-size: 12px;">Tel: +94 71 291 9408</p>
                                     </div>
                                 </div>
                                 <div class="card-body">
