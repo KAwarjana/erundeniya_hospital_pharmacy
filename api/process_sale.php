@@ -88,25 +88,51 @@ try {
         $batchId = intval($item['batch_id']);
         $quantity = floatval($item['quantity']);
         $unit = isset($item['unit']) ? $item['unit'] : 'kg';
-        $pricePerKg = floatval($item['price_per_kg'] ?? 0);
+        $basePrice = floatval($item['base_price'] ?? 0); // Price per base unit (from DB)
+        $baseUnit = isset($item['base_unit']) ? $item['base_unit'] : 'kg';
         
-        // Calculate actual quantity in kg for stock deduction
-        $quantityInKg = $quantity;
-        if ($unit === 'g' || $unit === 'ml') {
-            $quantityInKg = $quantity / 1000;
-        } elseif ($unit === 'bottle') {
-            $quantityInKg = $quantity; // Assume 1 bottle = 1 kg
-        } elseif ($unit === 'pills') {
-            $quantityInKg = $quantity; // 1 pill = 1 unit in stock (direct 1:1 mapping)
+        // Calculate quantity to deduct from stock (stock is stored in base_unit)
+        $quantityToDeduct = $quantity;
+        
+        // Convert selling quantity to base unit quantity for stock deduction
+        if ($baseUnit === 'kg') {
+            if ($unit === 'g' || $unit === 'ml') {
+                $quantityToDeduct = $quantity / 1000;
+            }
+            // kg, bottle, pills, packet - no conversion needed
+        } elseif ($baseUnit === 'g') {
+            if ($unit === 'kg') {
+                $quantityToDeduct = $quantity * 1000;
+            } elseif ($unit === 'g' || $unit === 'ml') {
+                $quantityToDeduct = $quantity;
+            }
+        } elseif ($baseUnit === 'ml') {
+            if ($unit === 'kg' || $unit === 'g') {
+                $quantityToDeduct = $quantity; // Assuming 1ml = 1g for liquids
+            }
+        } elseif ($baseUnit === 'packet' || $baseUnit === 'pills' || $baseUnit === 'bottle') {
+            // Discrete units - no conversion
+            $quantityToDeduct = $quantity;
         }
         
-        // Calculate unit price based on unit
-        $unitPrice = $pricePerKg;
-        if ($unit === 'g' || $unit === 'ml') {
-            $unitPrice = $pricePerKg / 1000;
-        } elseif ($unit === 'pills') {
-            $unitPrice = $pricePerKg; // Price per pill is stored directly
+        // Calculate unit price for invoice (price per selling unit)
+        $unitPrice = $basePrice; // Default: same as base price
+        
+        if ($baseUnit === 'kg') {
+            if ($unit === 'g' || $unit === 'ml') {
+                $unitPrice = $basePrice / 1000; // Price per gram/ml
+            }
+        } elseif ($baseUnit === 'g') {
+            if ($unit === 'kg') {
+                $unitPrice = $basePrice * 1000; // Price per kg
+            }
+            // g or ml - same price
+        } elseif ($baseUnit === 'ml') {
+            if ($unit === 'kg' || $unit === 'g') {
+                $unitPrice = $basePrice; // 1ml = 1g
+            }
         }
+        // For packet, pills, bottle - unitPrice = basePrice (price per unit)
         
         $totalPrice = $quantity * $unitPrice;
         
@@ -125,7 +151,7 @@ try {
         $stockResult = $checkStock->get_result();
         $stockRow = $stockResult->fetch_assoc();
         
-        if (!$stockRow || floatval($stockRow['quantity_in_stock']) < $quantityInKg) {
+        if (!$stockRow || floatval($stockRow['quantity_in_stock']) < $quantityToDeduct) {
             throw new Exception("Insufficient stock for batch ID: " . $batchId);
         }
         
@@ -136,8 +162,8 @@ try {
             throw new Exception("Failed to add sale item: " . $stmtItem->error);
         }
         
-        // Update stock (deduct based on calculated quantity)
-        $stmtStock->bind_param("di", $quantityInKg, $batchId);
+        // Update stock
+        $stmtStock->bind_param("di", $quantityToDeduct, $batchId);
         
         if (!$stmtStock->execute()) {
             throw new Exception("Failed to update stock: " . $stmtStock->error);
@@ -146,7 +172,6 @@ try {
     
     $conn->commit();
     
-    // Clear any remaining output buffer
     ob_clean();
     
     echo json_encode([
@@ -157,8 +182,6 @@ try {
     
 } catch (Exception $e) {
     $conn->rollback();
-    
-    // Clear any remaining output buffer
     ob_clean();
     
     echo json_encode([
@@ -167,6 +190,5 @@ try {
     ]);
 }
 
-// End output buffering and send
 ob_end_flush();
 ?>

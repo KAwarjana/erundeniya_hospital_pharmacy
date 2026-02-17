@@ -1,11 +1,10 @@
 <?php
 require_once 'auth.php';
-Auth::requireRole([1, 2, 3]); // Admin, Manager, and Cashier can access POS
+Auth::requireRole([1, 2, 3]);
 
 $conn = getDBConnection();
 $userInfo = Auth::getUserInfo();
 
-// Get all customers for dropdown
 $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers ORDER BY name");
 ?>
 <!doctype html>
@@ -16,7 +15,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Erundeniya Hospital Pharmacy</title>
 
-    <!-- Material Dashboard CSS -->
     <link href="assets/css/material-dashboard.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,600,700,900" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400,500,600,700&display=swap" rel="stylesheet">
@@ -25,7 +23,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
     <link rel="shortcut icon" href="assets/images/logof1.png">
 
     <style>
-        /* Main Content - Same as Dashboard */
         .main-content {
             margin-left: 15rem;
             transition: margin-left 0.3s ease;
@@ -46,7 +43,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             margin-top: 0 !important;
         }
 
-        /* EXACT DASHBOARD HEADER ALIGNMENT */
         .dashboard-header {
             padding-left: 2rem !important;
             margin-top: 0 !important;
@@ -64,7 +60,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             margin-bottom: 1rem !important;
         }
 
-        /* Breadcrumb alignment - exact dashboard style */
         nav[aria-label="breadcrumb"] {
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
@@ -86,7 +81,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             align-items: center !important;
         }
 
-        /* Sidebar - Same as Dashboard */
         .sidenav {
             position: fixed;
             top: 0;
@@ -104,13 +98,11 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             z-index: 1050 !important;
         }
 
-        /* POS Container - Material Design */
         .pos-container {
             margin-top: 0;
             padding: 1rem;
         }
 
-        /* Material Card Styling */
         .billing-card,
         .items-card,
         .invoice-card {
@@ -136,7 +128,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             padding: 1.5rem;
         }
 
-        /* Material Form Controls */
         .form-control,
         .form-select {
             border: 1px solid #e4e7ec;
@@ -155,7 +146,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             box-shadow: 0 0 0 2px rgba(73, 96, 255, 0.25);
         }
 
-        /* Material Buttons */
         .btn-action {
             width: 100%;
             padding: 0.75rem;
@@ -188,7 +178,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             background: #5a6268;
         }
 
-        /* EXACT DASHBOARD TABLE STYLING */
         .table {
             border-collapse: separate;
             border-spacing: 0;
@@ -219,17 +208,13 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             background-color: #f8f9fa;
         }
 
-        /* EXACT TABLE COLUMN ALIGNMENT LIKE DASHBOARD */
         .table thead th:nth-child(3),
-        /* Unit Price column */
         .table tbody td:nth-child(3),
         .table thead th:nth-child(6),
-        /* Net Amount column */
         .table tbody td:nth-child(6) {
             text-align: right !important;
         }
 
-        /* Material Search Box */
         .search-box {
             position: relative;
             margin-bottom: 1.5rem;
@@ -261,7 +246,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             background-color: #f8f9fa;
         }
 
-        /* Material Invoice Preview */
         .invoice-preview {
             background: white;
             border-radius: 0.75rem;
@@ -318,12 +302,10 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             margin-top: 0.75rem;
         }
 
-        /* Payment Section */
         .payment-section {
             margin-top: 1.5rem;
         }
 
-        /* Material Inputs */
         .item-input {
             border: 1px solid #e4e7ec;
             border-radius: 0.5rem;
@@ -350,7 +332,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             box-shadow: 0 0 0 2px rgba(73, 96, 255, 0.25);
         }
 
-        /* Material Badges */
         .badge {
             font-size: 0.75rem;
             font-weight: 600;
@@ -362,7 +343,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             background-color: #05880cff;
         }
 
-        /* Material Text */
         .text-muted {
             color: #67748e !important;
         }
@@ -371,7 +351,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             color: #05880cff !important;
         }
 
-        /* Loading Screen */
         #loading {
             position: fixed;
             top: 0;
@@ -395,16 +374,10 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* Sidebar Backdrop - Same as Dashboard */
         .sidebar-backdrop {
             position: fixed;
             top: 0;
@@ -420,13 +393,11 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             display: block;
         }
 
-        /* Mobile Table Responsive */
         .mobile-table {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
 
-        /* RESPONSIVE BREAKPOINTS - Same as Dashboard */
         @media (max-width: 1199.98px) {
             .sidenav {
                 transform: translateX(-100%) !important;
@@ -518,7 +489,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                 font-size: 0.85rem;
             }
 
-            /* Compact table for mobile */
             .table thead th {
                 font-size: 0.65rem;
                 padding: 0.5rem 0.5rem;
@@ -575,7 +545,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                 font-size: 1rem;
             }
 
-            /* Hide less important columns on very small screens */
             .table thead th:nth-child(1),
             .table tbody td:nth-child(1) {
                 display: none;
@@ -601,17 +570,13 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        /* iOS Safari fixes */
         @supports (-webkit-touch-callout: none) {
-
             .form-control,
             .form-select {
                 font-size: 16px;
-                /* Prevent zoom on focus */
             }
         }
 
-        /* Landscape orientation adjustments */
         @media (max-width: 768px) and (orientation: landscape) {
             .invoice-card {
                 max-height: 80vh;
@@ -619,9 +584,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        /* Print media query */
         @media print {
-
             .sidebar,
             .navbar,
             .btn-action,
@@ -638,7 +601,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        /* Delete icon alignment fixes */
         .table tbody td:last-child {
             text-align: center !important;
             vertical-align: middle !important;
@@ -658,12 +620,10 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             display: block !important;
         }
 
-        /* Ensure consistent vertical alignment */
         .table tbody td {
             vertical-align: middle !important;
         }
 
-        /* Mobile adjustments for icon */
         @media (max-width: 768px) {
             .btn.btn-danger {
                 padding: 6px 6px !important;
@@ -675,16 +635,20 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-    .modal-header {
-        border-bottom: 1px solid #dee2e6;
-        padding: 1.5rem;
-        background-color: #0f1a0fff;
-    }
+        .modal-header {
+            border-bottom: 1px solid #dee2e6;
+            padding: 1.5rem;
+            background-color: #0f1a0fff;
+        }
 
-    .modal-header .modal-title {
-        color: #f8fffbff !important;
-        font-size: 1.25rem;
-    }
+        .modal-header .modal-title {
+            color: #f8fffbff !important;
+            font-size: 1.25rem;
+        }
+
+        .invo--details{
+            margin-left: 3px;
+        }
     </style>
 </head>
 
@@ -695,14 +659,11 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
         </div>
     </div>
 
-    <!-- Sidebar Backdrop -->
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
-    <!-- Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
     <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
-        <!-- Navbar -->
         <?php include 'includes/header.php'; ?>
 
         <div class="container-fluid py-2 mt-0">
@@ -712,12 +673,9 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                     <p class="mb-4">Create new sales transactions</p>
                 </div>
 
-                <!-- POS Container -->
                 <div class="pos-container">
                     <div class="row">
-                        <!-- Left Side - Billing & Items -->
                         <div class="col-12 col-lg-8">
-                            <!-- Billing Details Card -->
                             <div class="card billing-card">
                                 <div class="card-header">
                                     <h5 class="mb-0">Billing Details</h5>
@@ -765,20 +723,17 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                 </div>
                             </div>
 
-                            <!-- Items Card -->
                             <div class="card items-card">
                                 <div class="card-header">
                                     <h5 class="mb-0">Items</h5>
                                 </div>
                                 <div class="card-body">
-                                    <!-- Search Box -->
                                     <div class="search-box">
                                         <input type="text" class="form-control" id="productSearch"
                                             placeholder="Search by name, ID, or barcode...">
                                         <div id="searchResults" class="search-results"></div>
                                     </div>
 
-                                    <!-- Items Table -->
                                     <div class="table-responsive mobile-table">
                                         <table class="table table-sm">
                                             <thead>
@@ -805,7 +760,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                             </div>
                         </div>
 
-                        <!-- Right Side - Invoice Preview -->
                         <div class="col-12 col-lg-4">
                             <div class="card invoice-card">
                                 <div class="card-header">
@@ -820,26 +774,25 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                         <div>
                                             <div class="invoice-detail-group">
                                                 <label>Invoice date</label>
-                                                <div id="invoiceDate"><?php echo date('M jS, Y'); ?></div>
+                                                <div id="invoiceDate" class="invo--details"><?php echo date('M jS, Y'); ?></div>
                                             </div>
                                             <div class="invoice-detail-group mt-3">
                                                 <label>Invoice number</label>
-                                                <div id="invoiceNumber">00000000</div>
+                                                <div id="invoiceNumber" class="invo--details">00000000</div>
                                             </div>
                                         </div>
                                         <div>
                                             <div class="invoice-detail-group">
                                                 <label>User</label>
-                                                <div id="invoiceUser"><?php echo htmlspecialchars($userInfo['full_name']); ?></div>
+                                                <div id="invoiceUser" class="invo--details"><?php echo htmlspecialchars($userInfo['full_name']); ?></div>
                                             </div>
                                             <div class="invoice-detail-group mt-3">
                                                 <label>Time</label>
-                                                <div id="invoiceTime"><?php echo date('h:i A'); ?></div>
+                                                <div id="invoiceTime" class="invo--details"><?php echo date('h:i A'); ?></div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Invoice Items -->
                                     <div class="invoice-items">
                                         <table class="table table-sm">
                                             <thead>
@@ -859,7 +812,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                         </table>
                                     </div>
 
-                                    <!-- Totals -->
                                     <div class="invoice-totals">
                                         <div class="total-row">
                                             <span>Net total</span>
@@ -879,7 +831,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                         </div>
                                     </div>
 
-                                    <!-- Payment Section -->
                                     <div class="payment-section">
                                         <label class="form-label"><strong>Payment Method</strong></label>
                                         <select class="form-select mb-3" id="paymentMethod">
@@ -909,7 +860,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
         <?php include 'includes/footer.php'; ?>
     </main>
 
-    <!-- Core JS Files -->
     <script src="assets/js/core/popper.min.js"></script>
     <script src="assets/js/core/bootstrap.min.js"></script>
     <script src="assets/js/plugins/perfect-scrollbar.min.js"></script>
@@ -921,10 +871,8 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
         let searchTimeout;
         let invoiceCounter = 1;
 
-        // Update invoice number
         document.getElementById('invoiceNumber').textContent = String(invoiceCounter).padStart(8, '0');
 
-        // Update time every second
         setInterval(() => {
             document.getElementById('invoiceTime').textContent = new Date().toLocaleTimeString('en-US', {
                 hour: '2-digit',
@@ -933,7 +881,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             });
         }, 1000);
 
-        // Mobile sidebar toggle - Same as Dashboard
         function toggleSidebar() {
             var sidenav = document.getElementById('sidenav-main');
             var backdrop = document.getElementById('sidebarBackdrop');
@@ -954,7 +901,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             body.classList.remove('sidebar-open');
         }
 
-        // Mobile toggle events
         var mobileToggle = document.getElementById('mobileToggle');
         var iconNavbarSidenav = document.getElementById('iconNavbarSidenav');
 
@@ -971,7 +917,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             sidebarBackdrop.addEventListener('click', closeSidebar);
         }
 
-        // Close sidebar on click outside (mobile)
         document.addEventListener('click', function(event) {
             var sidenav = document.getElementById('sidenav-main');
             var mobileToggle = document.getElementById('mobileToggle');
@@ -987,7 +932,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         });
 
-        // Close sidebar on navigation link click (mobile)
         document.addEventListener('DOMContentLoaded', function() {
             var navLinks = document.querySelectorAll('#sidenav-main .nav-link');
             navLinks.forEach(function(link) {
@@ -999,14 +943,12 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             });
         });
 
-        // Handle window resize
         window.addEventListener('resize', function() {
             if (window.innerWidth > 1199.98) {
                 closeSidebar();
             }
         });
 
-        // Toggle between walk-in and existing customer
         function toggleCustomerInput() {
             const customerType = document.getElementById('customerType').value;
             const customerNameInput = document.getElementById('customerName');
@@ -1028,7 +970,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        // Load customer details when selected from dropdown
         function loadCustomerDetails() {
             const select = document.getElementById('customerId');
             const selectedOption = select.options[select.selectedIndex];
@@ -1041,7 +982,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        // Product search
         document.getElementById('productSearch').addEventListener('input', function() {
             clearTimeout(searchTimeout);
             const query = this.value.trim();
@@ -1080,7 +1020,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                     <div class="search-result-item" onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&#39;")})'>
                         <strong>${product.product_name}</strong> <span class="badge bg-primary">ID: ${product.display_id}</span>
                         ${product.generic_name ? `<br><small class="text-muted">${product.generic_name}</small>` : ''}
-                        <br><small>Stock: ${product.quantity_in_stock} | Rs. ${parseFloat(product.selling_price).toFixed(2)}/${product.unit || 'kg'}</small>
+                        <br><small>Stock: ${product.quantity_in_stock} ${product.unit || 'kg'} | Rs. ${parseFloat(product.selling_price).toFixed(2)}/${product.unit || 'kg'}</small>
                     </div>
                 `;
             });
@@ -1105,9 +1045,10 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                     product_id: product.product_id,
                     product_name: product.product_name,
                     batch_no: product.batch_no,
-                    price_per_kg: parseFloat(product.selling_price),
+                    base_price: parseFloat(product.selling_price),
+                    base_unit: product.unit || 'kg',
                     quantity: 1,
-                    unit: 'kg',
+                    unit: product.unit || 'kg',
                     max_stock: product.quantity_in_stock
                 });
             }
@@ -1117,47 +1058,40 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             document.getElementById('productSearch').value = '';
         }
 
-        // Calculate actual price based on unit
-        function calculatePrice(item) {
-            let pricePerUnit = item.price_per_kg;
-
-            switch (item.unit) {
-                case 'g':
-                    pricePerUnit = item.price_per_kg / 1000;
-                    break;
-                case 'kg':
-                    pricePerUnit = item.price_per_kg;
-                    break;
-                case 'ml':
-                    pricePerUnit = item.price_per_kg / 1000;
-                    break;
-                case 'bottle':
-                    pricePerUnit = item.price_per_kg;
-                    break;
-                case 'pills':
-                    pricePerUnit = item.price_per_kg;
-                    break;
+        function getUnitPrice(item) {
+            const basePrice = item.base_price;
+            const baseUnit = item.base_unit;
+            const sellUnit = item.unit;
+            
+            if (baseUnit === sellUnit) {
+                return basePrice;
             }
-
-            return pricePerUnit * item.quantity;
+            
+            if (baseUnit === 'kg') {
+                if (sellUnit === 'g' || sellUnit === 'ml') {
+                    return basePrice / 1000;
+                }
+            } else if (baseUnit === 'g') {
+                if (sellUnit === 'kg') {
+                    return basePrice * 1000;
+                }
+                if (sellUnit === 'ml') {
+                    return basePrice;
+                }
+            } else if (baseUnit === 'ml') {
+                if (sellUnit === 'kg') {
+                    return basePrice * 1000;
+                }
+                if (sellUnit === 'g') {
+                    return basePrice;
+                }
+            }
+            
+            return basePrice;
         }
 
-        // Get display price per unit
-        function getUnitPrice(item) {
-            switch (item.unit) {
-                case 'g':
-                    return item.price_per_kg / 1000;
-                case 'kg':
-                    return item.price_per_kg;
-                case 'ml':
-                    return item.price_per_kg / 1000;
-                case 'bottle':
-                    return item.price_per_kg;
-                case 'pills':
-                    return item.price_per_kg;
-                default:
-                    return item.price_per_kg;
-            }
+        function calculatePrice(item) {
+            return getUnitPrice(item) * item.quantity;
         }
 
         function updateCartDisplay() {
@@ -1195,6 +1129,9 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                     case 'pills':
                         qtyPlaceholder = 'e.g., 10 (10 pills)';
                         break;
+                    case 'packet':
+                        qtyPlaceholder = 'e.g., 3 (3 packets)';
+                        break;
                 }
 
                 cartHtml += `
@@ -1202,7 +1139,7 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                         <td>${index + 1}</td>
                         <td>
                             <strong>${item.product_name}</strong>
-                            <br><small class="text-muted">Rs. ${item.price_per_kg.toFixed(2)}/${item.unit}</small>
+                            <br><small class="text-muted">Rs. ${item.base_price.toFixed(2)}/${item.base_unit}</small>
                         </td>
                         <td>Rs. ${unitPrice.toFixed(2)}</td>
                         <td>
@@ -1218,27 +1155,32 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
                                 <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
                                 <option value="bottle" ${item.unit === 'bottle' ? 'selected' : ''}>bottle</option>
                                 <option value="pills" ${item.unit === 'pills' ? 'selected' : ''}>pills</option>
+                                <option value="packet" ${item.unit === 'packet' ? 'selected' : ''}>packet</option>
                             </select>
                         </td>
                         <td>Rs. ${itemTotal.toFixed(2)}</td>
                         <td class="text-center">
-    <button class="btn btn-danger btn-icon" onclick="removeFromCart(${index})" title="Remove item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M19.3248 9.46826C19.3248 9.46826 18.7818 16.2033 18.4668 19.0403C18.3168 20.3953 17.4798 21.1893 16.1088 21.2143C13.4998 21.2613 10.8878 21.2643 8.27979 21.2093C6.96079 21.1823 6.13779 20.3783 5.99079 19.0473C5.67379 16.1853 5.13379 9.46826 5.13379 9.46826" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="M20.708 6.23975H3.75" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-        </svg>
-    </button>
-</td>
+                            <button class="btn btn-danger btn-icon" onclick="removeFromCart(${index})" title="Remove item">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19.3248 9.46826C19.3248 9.46826 18.7818 16.2033 18.4668 19.0403C18.3168 20.3953 17.4798 21.1893 16.1088 21.2143C13.4998 21.2613 10.8878 21.2643 8.27979 21.2093C6.96079 21.1823 6.13779 20.3783 5.99079 19.0473C5.67379 16.1853 5.13379 9.46826 5.13379 9.46826" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M20.708 6.23975H3.75" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                            </button>
+                        </td>
                     </tr>
                 `;
 
+                // Modified invoice layout: Item name on first row (full width, left align), details on second row (empty first column)
                 invoiceHtml += `
                     <tr>
-                        <td>${item.product_name}</td>
-                        <td>${item.quantity}</td>
-                        <td>${item.unit}</td>
-                        <td>${unitPrice.toFixed(2)}</td>
-                        <td>${itemTotal.toFixed(2)}</td>
+                        <td colspan="5" style="text-align: left !important; font-weight: 600; border-bottom: none; padding-bottom: 2px;">${item.product_name}</td>
+                    </tr>
+                    <tr>
+                        <td style="border-top: none; padding-top: 2px;"></td>
+                        <td style="border-top: none; padding-top: 2px; text-align: center;">${item.quantity}</td>
+                        <td style="border-top: none; padding-top: 2px; text-align: center;">${item.unit}</td>
+                        <td style="border-top: none; padding-top: 2px; text-align: center;">${unitPrice.toFixed(2)}</td>
+                        <td style="border-top: none; padding-top: 2px; text-align: center;">${itemTotal.toFixed(2)}</td>
                     </tr>
                 `;
             });
@@ -1259,14 +1201,17 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
 
             let stockInSelectedUnit = item.max_stock;
-            if (item.unit === 'g' || item.unit === 'ml') {
+            
+            if (item.base_unit === 'kg' && (item.unit === 'g' || item.unit === 'ml')) {
                 stockInSelectedUnit = item.max_stock * 1000;
-            } else if (item.unit === 'pills') {
-                stockInSelectedUnit = item.max_stock;
+            } else if (item.base_unit === 'g' && item.unit === 'kg') {
+                stockInSelectedUnit = item.max_stock / 1000;
+            } else if (item.base_unit === 'ml' && item.unit === 'kg') {
+                stockInSelectedUnit = item.max_stock / 1000;
             }
 
             if (quantity > stockInSelectedUnit) {
-                Swal.fire('Error', `Not enough stock. Available: ${stockInSelectedUnit} ${item.unit}`, 'error');
+                Swal.fire('Error', `Not enough stock. Available: ${stockInSelectedUnit.toFixed(2)} ${item.unit}`, 'error');
                 updateCartDisplay();
                 return;
             }
@@ -1278,24 +1223,39 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
         function updateUnit(index, unit) {
             const item = cart[index];
             const oldUnit = item.unit;
+            const baseUnit = item.base_unit;
 
             if (oldUnit !== unit) {
-                if (oldUnit === 'kg' && unit === 'g') {
-                    item.quantity = item.quantity * 1000;
-                } else if (oldUnit === 'g' && unit === 'kg') {
-                    item.quantity = item.quantity / 1000;
-                } else if (oldUnit === 'kg' && unit === 'ml') {
-                    item.quantity = item.quantity * 1000;
-                } else if (oldUnit === 'ml' && unit === 'kg') {
-                    item.quantity = item.quantity / 1000;
-                } else if (oldUnit === 'g' && unit === 'ml') {
-                    // Keep same value
-                } else if (oldUnit === 'ml' && unit === 'g') {
-                    // Keep same value
-                } else if (oldUnit === 'pills') {
-                    item.quantity = item.quantity;
-                } else if (unit === 'pills') {
-                    item.quantity = item.quantity;
+                let quantityInBase = item.quantity;
+                
+                if (oldUnit === 'kg' && baseUnit === 'g') {
+                    quantityInBase = item.quantity * 1000;
+                } else if (oldUnit === 'g' && baseUnit === 'kg') {
+                    quantityInBase = item.quantity / 1000;
+                } else if (oldUnit === 'kg' && baseUnit === 'ml') {
+                    quantityInBase = item.quantity * 1000;
+                } else if (oldUnit === 'ml' && baseUnit === 'kg') {
+                    quantityInBase = item.quantity / 1000;
+                } else if (oldUnit === 'g' && baseUnit === 'ml') {
+                    quantityInBase = item.quantity;
+                } else if (oldUnit === 'ml' && baseUnit === 'g') {
+                    quantityInBase = item.quantity;
+                } else {
+                    quantityInBase = item.quantity;
+                }
+                
+                if (baseUnit === 'kg' && (unit === 'g' || unit === 'ml')) {
+                    item.quantity = quantityInBase * 1000;
+                } else if (baseUnit === 'g' && unit === 'kg') {
+                    item.quantity = quantityInBase / 1000;
+                } else if (baseUnit === 'ml' && unit === 'kg') {
+                    item.quantity = quantityInBase / 1000;
+                } else if (baseUnit === 'g' && unit === 'ml') {
+                    item.quantity = quantityInBase;
+                } else if (baseUnit === 'ml' && unit === 'g') {
+                    item.quantity = quantityInBase;
+                } else {
+                    item.quantity = quantityInBase;
                 }
             }
 
@@ -1327,7 +1287,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             document.getElementById('changeAmount').value = Math.max(0, change).toFixed(2);
         }
 
-        // Payment method change
         document.getElementById('paymentMethod').addEventListener('change', function() {
             const cashSection = document.getElementById('cashPaymentSection');
             if (this.value === 'cash') {
@@ -1484,14 +1443,12 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         }
 
-        // Close search results when clicking outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.search-box')) {
                 document.getElementById('searchResults').style.display = 'none';
             }
         });
 
-        // Hide loading when page is loaded
         window.addEventListener('load', function() {
             var loading = document.getElementById('loading');
             if (loading) {
@@ -1499,7 +1456,6 @@ $customers = $conn->query("SELECT customer_id, name, contact_no FROM customers O
             }
         });
 
-        // Fix for iOS Safari
         if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
             document.body.classList.add('ios-device');
         }

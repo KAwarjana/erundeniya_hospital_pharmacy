@@ -336,12 +336,16 @@ $items = $stmt->get_result();
                     while ($item = $items->fetch_assoc()):
                         $itemCount++;
                     ?>
-                        <tr class="item-row">
-                            <td>
+                        <tr>
+                            <td colspan="5">
                                 <div class="item-name"><?php echo htmlspecialchars($item['product_name']); ?></div>
                                 <?php if ($item['generic_name']): ?>
                                     <div class="item-details"><?php echo htmlspecialchars($item['generic_name']); ?></div>
                                 <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr class="item-row">
+                            <td>
                             </td>
                             <td class="text-center">
                                 <?php
