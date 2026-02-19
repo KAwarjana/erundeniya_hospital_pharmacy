@@ -38,7 +38,7 @@ $conn = getDBConnection();
 
 try {
     $conn->begin_transaction();
-    
+
     // Check if batch number already exists for different batch
     if ($batchId > 0) {
         $stmt = $conn->prepare("SELECT batch_id FROM product_batches WHERE batch_no = ? AND product_id = ? AND batch_id != ?");
@@ -47,20 +47,20 @@ try {
         $stmt = $conn->prepare("SELECT batch_id FROM product_batches WHERE batch_no = ? AND product_id = ?");
         $stmt->bind_param("si", $batchNo, $productId);
     }
-    
+
     $stmt->execute();
     if ($stmt->get_result()->num_rows > 0) {
         echo json_encode(['success' => false, 'message' => 'Batch number already exists for this product']);
         exit;
     }
-    
+
     if ($batchId > 0) {
-        // Update existing batch - FIXED: Removed extra space in bind_param
+        // Update existing batch
         $stmt = $conn->prepare("UPDATE product_batches 
                                SET product_id = ?, batch_no = ?, expiry_date = ?, cost_price = ?, selling_price = ?, quantity_in_stock = ? 
                                WHERE batch_id = ?");
         $stmt->bind_param("issdiii", $productId, $batchNo, $expiryDate, $costPrice, $sellingPrice, $quantity, $batchId);
-        
+
         if ($stmt->execute()) {
             $conn->commit();
             echo json_encode(['success' => true, 'message' => 'Batch updated successfully']);
@@ -68,41 +68,44 @@ try {
             throw new Exception('Failed to update batch');
         }
     } else {
-        // Insert new batch
-        $stmt = $conn->prepare("INSERT INTO product_batches (product_id, batch_no, expiry_date, cost_price, selling_price, quantity_in_stock) 
-                               VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("issddi", $productId, $batchNo, $expiryDate, $costPrice, $sellingPrice, $quantity);
-        
+        // Get next display_id before insert
+        $displayResult = $conn->query("SELECT COALESCE(MAX(display_id), 0) + 1 as next_id FROM product_batches");
+        $nextDisplayId = $displayResult->fetch_assoc()['next_id'];
+
+        // Insert new batch with display_id
+        $stmt = $conn->prepare("INSERT INTO product_batches (product_id, batch_no, expiry_date, cost_price, selling_price, quantity_in_stock, display_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issdiii", $productId, $batchNo, $expiryDate, $costPrice, $sellingPrice, $quantity, $nextDisplayId);
+
         if ($stmt->execute()) {
             $newBatchId = $conn->insert_id;
-            
-            // Create a purchase record (optional - for tracking)
-            // You can enhance this to create proper purchase records with supplier info
+
+            // Create a purchase record for tracking
             $userInfo = Auth::getUserInfo();
             $totalAmount = $costPrice * $quantity;
-            
+
             $stmt = $conn->prepare("INSERT INTO purchases (supplier_id, user_id, invoice_no, total_amount) 
                                    VALUES (NULL, ?, ?, ?)");
             $invoiceNo = 'AUTO-' . date('YmdHis');
             $stmt->bind_param("isd", $userInfo['user_id'], $invoiceNo, $totalAmount);
             $stmt->execute();
-            
+
             $purchaseId = $conn->insert_id;
-            
+
             // Create purchase item
             $stmt = $conn->prepare("INSERT INTO purchase_items (purchase_id, batch_id, quantity, cost_price, total_cost) 
                                    VALUES (?, ?, ?, ?, ?)");
             $totalCost = $costPrice * $quantity;
             $stmt->bind_param("iiidd", $purchaseId, $newBatchId, $quantity, $costPrice, $totalCost);
             $stmt->execute();
-            
+
             $conn->commit();
             echo json_encode(['success' => true, 'message' => 'Batch added successfully', 'batch_id' => $newBatchId]);
         } else {
             throw new Exception('Failed to add batch');
         }
     }
-    
+
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
